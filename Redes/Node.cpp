@@ -1,27 +1,11 @@
 #include "Node.h"
 
-
-//INSERT A {at1:val1,at2:val2 ...} 
-Node::Node(string val) {
-	string query = remove_space(val);
-	string name = remove_space(val);
-	cout<<"QUERY: "<<query<<endl;
-	cout<<"NAME: "<<name<<endl;
-	separate_attributes(val);
-	
+Node::Node(string id, string attrib) {
+	this->node_id = id;
+	separate_attributes(attrib);
 }
-
-string remove_space(string &s){
-	string delimiter = " ";
-	int pos = s.find(delimiter);
-	string s1 = s.substr(0, pos);
-	s.erase(0, pos + delimiter.length());
-	return s1;
-}
-
 
 void Node::separate_attributes(string val){
-	
 	std::string delimiter1 = "{}";
 	
 	for (char c: delimiter1) {
@@ -30,7 +14,6 @@ void Node::separate_attributes(string val){
 	
 	vector<string> valores = separate_string(val,",");
 
-	
 	for(int i=0;i<valores.size();++i){
 		vector<string> v = separate_string(valores[i],":");
 		attributes.push_back(v[0]);
