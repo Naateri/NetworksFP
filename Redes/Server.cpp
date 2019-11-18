@@ -1,8 +1,7 @@
 #include "Server.h"
 
 Server::Server() {
-	list_nodes.resize(0);
-	
+	list_nodes.resize(0);	
 }
 
 void Server::query(string s){
