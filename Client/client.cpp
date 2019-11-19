@@ -98,8 +98,7 @@ int main(void){
     }
  	//hacer un chat para la siguiente clase
 	int cnct = connect(SocketFD, (const struct sockaddr *)&stSockAddr, sizeof(struct sockaddr_in));
-    if (-1 == cnct)
-    {
+    if (-1 == cnct) {
       perror("connect failed");
       close(SocketFD);
       exit(EXIT_FAILURE);

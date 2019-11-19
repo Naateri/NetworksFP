@@ -12,11 +12,14 @@
 #include <unistd.h>
 #include <iostream>
 #include <thread>
+#include <map>
 
 #define MAX_SLAVES 5
 
 int SocketFD, ConnectFD;
 char msg[256];
+
+std::map<int, int> slaves; //Stored as: ID-FD
 
 int PORT = 40000;
 
