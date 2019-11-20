@@ -23,7 +23,7 @@ int PORT = 40000;
 bool end_connection = false;
 
 void requesting_access(int SocketFD){
-	int n = write(SocketFD, "Requesting access.", 18);
+	int n = write(SocketFD, "Requesting access.", 19);
 	bzero(buffer,256);
 	n = read(SocketFD,buffer,255);
 	
@@ -37,6 +37,27 @@ void requesting_access(int SocketFD){
 	}
 }
 
+void closing_connection(){
+	int n;
+	n = write(SocketFD, "Closing Connection.", 19+1);
+	bzero(buffer,256);
+	n = read(SocketFD,buffer,4); //OK
+	
+	if (strcmp(buffer, "OK.") == 0){
+		bzero(buffer,256);
+		n = read(SocketFD, buffer, 13+2); //Are you sure?
+		if (strcmp(buffer, "Are you sure?") == 0){
+			n = write(SocketFD, "Yes.", 4+1);
+			printf("Ending connection with server. Closing socket.\n");
+		} else {
+			printf("Erroneous confirmation. Server not asking.\n");
+		}
+	} else {
+		printf("Erroneous confirmation. Server not confirming.\n");
+	}
+	
+}
+
 void send_msg(){
 	char msg[256];
     int n;
@@ -47,6 +68,11 @@ void send_msg(){
 
 		//n dice cuantos bytes se han mandado
 		msg[n] = '\0';
+		
+		if ((char)msg[0] == '0'){
+			end_connection = true;
+		}
+		
 	} while(!end_connection);
 }
 
@@ -59,9 +85,9 @@ void rcv_msg(){
 		if (n < 0) perror("ERROR reading from socket");
 		buffer[n] = '\0';
 		printf("Server: [%s]\n",buffer);
-	} while(strcmp(buffer, "chau") != 0);
+	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
-	end_connection = false;
+	end_connection = true;
 	
 }
  
@@ -113,6 +139,9 @@ int main(void){
 
 	t1.join();
 	t2.join();
+	
+	closing_connection();
+	
     shutdown(SocketFD, SHUT_RDWR);
  
     close(SocketFD);

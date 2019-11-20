@@ -45,6 +45,19 @@ bool confirming_connection(int ConnectFD){
 	}
 }
 
+bool closing_connection(int ConnectFD){
+	char msg[5];
+	int n = write(ConnectFD, "OK.", 4);
+	printf("OK. sent to %d\n", ConnectFD);
+	sleep(1); //giving time for client to process reply
+	n = write(ConnectFD, "Are you sure?", 13+1);
+	n = read(ConnectFD, msg, 5); //yes
+	if (strcmp(msg, "Yes.") == 0){
+		printf("Ending connection with client %d\n", ConnectFD);
+		return true;
+	} else return false;
+}
+
 std::string insert_node(const char* msg, int lvl){
 	std::string temp(msg); //communicate with appropiate slave
 	std::string return_to_client; //result to be sent to client
@@ -68,7 +81,7 @@ std::string select_node(const char* msg, int lvl){
 	return return_to_client;
 }
 
-std::string parse_message(char msg[256]){
+std::string parse_message(char msg[256], int ConnectFD, bool& end_connection){
 	int n = 0, level; //n = message type
 	std::string str_msg(msg, strlen(msg));
 	//know what the server wants
@@ -76,6 +89,8 @@ std::string parse_message(char msg[256]){
 		return insert_node(str_msg.c_str(), level);
 	} else if (n == 2){
 		return select_node(str_msg.c_str(), level);
+	} else if (strcmp(msg, "Closing Connection.") == 0){
+		end_connection = closing_connection(ConnectFD);
 	} else {
 		return "Error. Query not understood\n";
 	}
@@ -83,6 +98,7 @@ std::string parse_message(char msg[256]){
 
 void rcv_msg(int ConnectFD){
 	char buffer[256];
+	bool end_connection = false;
 	std::string slave_msg;
 	bool msg_from_slave = false;
 	std::string result;
@@ -99,11 +115,11 @@ void rcv_msg(int ConnectFD){
 		} else msg_from_slave = false;
 		
 		if (!msg_from_slave){
-			result = parse_message(buffer);
+			result = parse_message(buffer, ConnectFD, end_connection);
 			n = write(ConnectFD, result.c_str(), result.size());
 		}
 		
-	}while ( strcmp(msg, "chau") != 0);
+	}while (!end_connection); //( strcmp(msg, "chau") != 0);
 	
 	shutdown(ConnectFD, SHUT_RDWR);
 	
