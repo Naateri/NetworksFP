@@ -268,13 +268,7 @@ void rcv_msg(){
 			*/
 			
 		}
-		else if(temp.substr(0, 6) == "client"){
-			printf("Client %d: [%s]\n", SocketFD, buffer);
-			/*
-			string sender = slice_string(temp);
-			transform(sender.begin(), sender.end(),sender.begin(), ::tolower);
-			*/
-		}
+		
 		
 		
 		

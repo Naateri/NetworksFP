@@ -31,7 +31,7 @@ int node_counter = 0;
 int PORT = 40004;
 
 ///Para probar 
-string men = "INSERT A - C"; 
+string men = "INSERT Hola {loquesea:val, otro:bai}"; 
 ///
 
 string slice_string(string &s){
@@ -91,13 +91,14 @@ void insert_node(string &msg){
 	
 	int hash = hash_function(node_id);
 	/// Insertar en server.txt
+	/*
 	ofstream fe;
 	fe.open(server_txt, ios::app);
 	fe.seekp(0, ios::end);
 	string node_to_insert =  node_id + ' ' + to_string(hash) + '\n';
 	fe << node_to_insert;
 	fe.close();	
-	
+	*/
 	
 	/// Madarle al slave lo que tiene que insertar
 	/// 0 es para insertar un nodo 
@@ -162,13 +163,14 @@ std::string insert(string msg){
 		
 		if(connection_slave1 && connection_slave2){
 			/// Insertar en server.txt
+			/*
 			ofstream fe;
 			fe.open(server_txt, ios::app);
 			fe.seekp(0, ios::end);
 			fe << nodes[0] + " " +to_string(hash1)<<endl;
 			fe << nodes[1] + " " +to_string(hash2)<<endl;
 			fe.close();	
-			
+			*/
 			string msg_slave = "server 1 " + nodes[0] + " " + nodes[1];
 			 write(ConnectFD, msg_slave.c_str(), msg_slave.size());
 			return_to_client = "Relation inserted";
