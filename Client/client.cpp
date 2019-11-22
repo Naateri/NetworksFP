@@ -13,6 +13,7 @@
 #include <iostream>
 #include <thread>
 #include <string>
+using namespace std;
 
 int SocketFD;
 char buffer[256];
@@ -51,11 +52,17 @@ void send_msg(){
 }
 
 void rcv_msg(){
-	//char buffer[256];
+	char buffer[2048];
+	//string buffer;
     int n;
 	do{	
-		bzero(buffer,256);
-		n = read(SocketFD,buffer,255);
+		bzero(buffer,2048);
+		n = read(SocketFD,buffer,1);
+		if(buffer[0] == 's'){
+			n = read(SocketFD,buffer,6);
+			int resultSize = stoi(buffer);
+			n = read(SocketFD,buffer,resultSize);
+		}
 		if (n < 0) perror("ERROR reading from socket");
 		buffer[n] = '\0';
 		printf("Server: [%s]\n",buffer);
