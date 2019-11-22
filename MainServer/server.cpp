@@ -267,6 +267,54 @@ std::string select_node(const char* msg, int lvl){
 	std::string return_to_client; //result to be sent to client
 	//put in temp the node value
 	int hash = hash_function(temp);
+	cout<<lvl<<endl;
+	hash++;
+	std::fstream file;
+	string slave_txt = "slave_" + to_string(hash)+ ".txt";
+	//cout<<slave_txt<<endl;
+	file.open(slave_txt, ios::in);
+	
+	string line,res;
+	vector<string> separate = separate_string(temp, " ");
+	bool attributes = 0;
+	bool findAttibutes = 0;
+	bool once = 1;
+	if (file.is_open()){
+		cout<<"Select information"<<endl;
+		if(stoi(separate[separate.size()-1]) == 1){
+			while ( getline (file,line) && !file.eof()){
+				
+				if(line == "" && once){
+					
+					res+= "Attributes: ";
+					attributes = 1;
+					once = 0;
+				}
+				if(!attributes){
+					if(separate[0][0] == line[0]){
+						res+= line + " == ";
+					}
+				}else{
+					if(separate[0][0] == line[0]){
+						
+						findAttibutes = 1;
+					}
+					if(findAttibutes){
+						if(line == ""){
+							break;
+						}
+						
+						res+=line+" == ";
+					}
+				}
+				
+			}
+			return_to_client = res;
+			file.close();
+		}
+		
+	}
+	
 	
 	//comunicate with appropiate slave
 	
@@ -285,7 +333,8 @@ std::string parse_message(char msg[256]){
 	//know what the server wants
 	if (query == "insert" ){
 		return insert(str_msg);
-	} else if (n == 2){
+	} else if (query == "select"){
+		cout<<"Entro Select"<<endl;
 		return select_node(str_msg.c_str(), level);
 	} else {
 		return "Error. Query not understood\n";
