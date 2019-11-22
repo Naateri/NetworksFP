@@ -18,12 +18,12 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40000;
+int PORT = 40002;
 
 bool end_connection = false;
 
 void requesting_access(int SocketFD){
-	int n = write(SocketFD, "Requesting access.", 18);
+	int n = write(SocketFD, "Requesting access.", 19);
 	bzero(buffer,256);
 	n = read(SocketFD,buffer,255);
 	
