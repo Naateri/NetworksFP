@@ -276,6 +276,8 @@ std::string select_node(const char* msg, int lvl){
 	
 	string line,res;
 	vector<string> separate = separate_string(temp, " ");
+	vector<string> nodes;
+	nodes.push_back(separate[0]);
 	bool attributes = 0;
 	bool findAttibutes = 0;
 	bool once = 1;
@@ -293,23 +295,28 @@ std::string select_node(const char* msg, int lvl){
 				if(!attributes){
 					if(separate[0][0] == line[0]){
 						res+= line + " == ";
+						vector<string> temp = separate_string(line, " ");
+						nodes.push_back(temp[temp.size()-1]);
 					}
 				}else{
-					if(separate[0][0] == line[0]){
-						
-						findAttibutes = 1;
-					}
-					if(findAttibutes){
-						if(line == ""){
+					for(int i = 0;i<nodes.size();++i){
+						if(nodes[i][0] == line[0] && line != ""){
+							findAttibutes = 1;
 							break;
 						}
-						
+					}
+					if(findAttibutes){
 						res+=line+" == ";
+						findAttibutes =0;
 					}
 				}
 				
 			}
-			return_to_client = res;
+			string lengthString = to_string(res.size());
+			while(lengthString.size()<6){
+				lengthString = "0"+lengthString;
+			}
+			return_to_client = "s"+lengthString+res;
 			file.close();
 		}
 		
