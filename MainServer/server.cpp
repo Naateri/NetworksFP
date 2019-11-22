@@ -19,6 +19,7 @@
 #include <regex>
 
 #define MAX_SLAVES 5
+#define uint unsigned int 
 using namespace std;
 int SocketFD, ConnectFD;
 char msg[256];
@@ -27,7 +28,11 @@ string server_txt = "server.txt";
 std::map<int, int> slaves; //Stored as: ID-FD
 int node_counter = 0;   
 
-int PORT = 40002;
+int PORT = 40004;
+
+///Para probar 
+string men = "INSERT A - C"; 
+///
 
 string slice_string(string &s){
 	string delimiter = " ";
@@ -39,7 +44,7 @@ string slice_string(string &s){
 	
 int hash_function(std::string value){
 	int cur_sum = 0;
-	for (int i = 0; i < value.size(); i++){
+	for (uint i = 0; i < value.size(); i++){
 		cur_sum += (int)value[i];
 	}
 	return cur_sum % MAX_SLAVES;
@@ -60,7 +65,7 @@ bool confirming_connection(int ConnectFD){
 }
 vector<string> separate_string(string s, string delimiter){
 	vector<string> values;
-	int pos = s.find(delimiter);
+	uint pos = s.find(delimiter);
 	
 	while (pos < s.size()) {
 		string s1 = s.substr(0, pos);
@@ -71,37 +76,7 @@ vector<string> separate_string(string s, string delimiter){
 	values.push_back(s);
 	return values;
 }
-				
-				
-vector<string> separate_attributes(string val){
-	std::string delimiter1 = "}";
-	vector<string> res;
-	
-	for (char c: delimiter1) {
-		val.erase(std::remove(val.begin(), val.end(), c), val.end());
-	}
-	if(val.size()==0){
-		cout<<"No hay atributos"<<endl;
-	}
-	else{
-		vector<string> valores = separate_string(val,",");
-		
-		for(int i=0;i<valores.size();++i){
-			vector<string> v = separate_string(valores[i],":");
-			res.push_back(v[0]);
-			res.push_back(v[1]);
-		}
-	}
-	return res;
-}
-					
-					
-string lrtrim(string str) {
-	const std::string nothing = "" ;
-	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
-	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
-	return str ; 
-}
+
 
 void delSpaces(string &s){
 	s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
@@ -112,99 +87,34 @@ void insert_node(string &msg){
 	delSpaces(node[0]);
 	string node_id = node[0];
 	
-	cout<<"Nombre del nodo: |"<< node_id <<"|\n";
-	vector<string> attr = separate_attributes(node[1]);
-	
-	
-	for(int i=0;i<attr.size();++i){
-		attr[i] = lrtrim(attr[i]);
-	}
-	
-	for(int i=0;i<attr.size();++i){
-		cout<<"ATTRIBUTE:|"<<attr[i]<<"|"<<endl;
-		cout<<"VALUE:|"<<attr[i+1]<<"|"<<endl;
-		++i;
-		
-	}
+	//cout<<"Nombre del nodo: |"<< node_id <<"|\n";
 	
 	int hash = hash_function(node_id);
-	/// ------------------
-	/// ------------------
-	///Cambiar por la comunicacion con el slave
-	bool connection = true; 
-	/// ------------------
-	/// ------------------
+	/// Insertar en server.txt
+	ofstream fe;
+	fe.open(server_txt, ios::app);
+	fe.seekp(0, ios::end);
+	string node_to_insert =  node_id + ' ' + to_string(hash) + '\n';
+	fe << node_to_insert;
+	fe.close();	
 	
-	if(connection){
-		/// Insertar en server.txt
-		ofstream fe;
-		fe.open(server_txt, ios::app);
-		fe.seekp(0, ios::end);
-		string node_to_insert =  node_id + ' ' + to_string(hash) + '\n';
-		fe << node_to_insert;
-		fe.close();	
-		
-		/// Insertar en el slave
-		
-		string slave_txt = "slave_" + to_string(hash)+ ".txt";
-		cout<<slave_txt<<endl;
-		
-		ofstream fs;
-		fs.open(slave_txt, ios::app | ios::out);
-		fs.seekp(0, ios::end);
-		fs <<endl;
-		fs<<node_id<<endl;
-		for(int i=0;i<attr.size();++i){
-			fs<<attr[i]<<" : "<<attr[i+1];
-			++i;
-		}
-		
-		fs<<endl;
-		fs.close();	
-	}
 	
-	else{
-		cout<<"Unconnected Slave. Please try later.\n";
-	}
-}
+	/// Madarle al slave lo que tiene que insertar
+	/// 0 es para insertar un nodo 
+	/// 1 es para insertar una relacion
 	
-void insert_relation(int num_file, string rel){
-	std::fstream myfile, outfile;
-	string slave_txt = "slave_" + to_string(num_file)+ ".txt";
-	//cout<<slave_txt<<endl;
-	myfile.open(slave_txt, ios::in);
-	
-	string line;
+	string msg_slave = "server 0 " + msg;
+	write(ConnectFD, msg_slave.c_str(), msg_slave.size());
 
-	vector<string> txt;
-	txt.push_back(rel);
-	cout<<"INSERT_RELATION"<<endl;
-	if (myfile.is_open()){
-		while ( getline (myfile,line) && !myfile.eof()){
-			txt.push_back(line);
-		}
-		myfile.close();
-		
-	}
-	
-	outfile.open(slave_txt, ios::out );
-	outfile.clear();
-	outfile.seekp(0);
-	
-	for(int i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
-		outfile <<txt[i];
-		outfile<<endl;
-	}
-	
-	outfile.close();
-	
 }
+	
+
 	
 std::string insert(string msg){
+	std::string return_to_client; //result to be sent to client
 	//cout<<msg<<endl;
 	bool isNode= false;
-	for(int i=0;i<msg.size();++i){
+	for(uint i=0;i<msg.size();++i){
 		if(msg[i] == '{'){
 			isNode = true;
 			break;
@@ -214,10 +124,23 @@ std::string insert(string msg){
 		}
 		
 	}
+
 	/// Insertando nodo
-	if(isNode == true){//////////////
-		insert_node(msg);
+	if(isNode == true){
+		
+		/// Conexion con el slave	
+		bool connection_slave = true ;
+		///
+
+		if (connection_slave ){
+			insert_node(msg);
+			return_to_client = "Node inserted";
+		}
+		else
+			return_to_client = "Unconnected slave. Please try again later.";
+		
 	}
+	
 	/// Insertando relacion
 	else{ 
 		
@@ -231,63 +154,54 @@ std::string insert(string msg){
 		
 		int hash1 = hash_function(nodes[0]);
 		int hash2 = hash_function(nodes[1]);
-
-		/// Insertar en server.txt
-		ofstream fe;
-		fe.open(server_txt, ios::app);
-		fe.seekp(0, ios::end);
-		fe << nodes[0] + " " +to_string(hash1)<<endl;
-		fe << nodes[1] + " " +to_string(hash2)<<endl;
-		fe.close();	
-
 		
-		string rel1 =nodes[0] +" - "+nodes[1];
-		string rel2 =nodes[1] +" - "+nodes[0];
+		/// Verificar conexion con ambos slaves
+		bool connection_slave1 = true;
+		bool connection_slave2 = true;
 		
-		insert_relation(hash1, rel1);
-		insert_relation(hash2, rel2);
+		
+		if(connection_slave1 && connection_slave2){
+			/// Insertar en server.txt
+			ofstream fe;
+			fe.open(server_txt, ios::app);
+			fe.seekp(0, ios::end);
+			fe << nodes[0] + " " +to_string(hash1)<<endl;
+			fe << nodes[1] + " " +to_string(hash2)<<endl;
+			fe.close();	
+			
+			string msg_slave = "server 1 " + nodes[0] + " " + nodes[1];
+			 write(ConnectFD, msg_slave.c_str(), msg_slave.size());
+			return_to_client = "Relation inserted";
+		}
+		else
+		   return_to_client = "Unconnected slave. Please try again later.";
 	}
 	
-	
-	
-	
-	std::string temp(msg); //communicate with appropiate slave
-	std::string return_to_client; //result to be sent to client
+	//std::string temp(msg); //communicate with appropiate slave
+
 	//put in temp the node value
-	int hash = hash_function(temp);
-	
-	//comunicate with appropiate slave
-	
-	return return_to_client;
-}
-	
-	
-std::string select_node(const char* msg, int lvl){
-	std::string temp(msg); //communicate with appropiate slave
-	std::string return_to_client; //result to be sent to client
-	//put in temp the node value
-	int hash = hash_function(temp);
+	//int hash = hash_function(temp);
 	
 	//comunicate with appropiate slave
 	
 	return return_to_client;
 }
 		
-std::string parse_message(char msg[256]){
-	int n = 0, level; //n = message type
+std::string parse_message(char* msg){
+	//int n = 0, level; //n = message type
 	string str_msg(msg, strlen(msg));
 	
+	
+	/// Saber cual es la consulta
 	string query = slice_string(str_msg);
 	transform(query.begin(), query.end(),query.begin(), ::tolower);
-	cout<<query<<endl;
-	
+	//cout<<query<<endl;
+	///
 	
 	//know what the server wants
 	if (query == "insert" ){
 		return insert(str_msg);
-	} else if (n == 2){
-		return select_node(str_msg.c_str(), level);
-	} else {
+	}  else {
 		return "Error. Query not understood\n";
 	}
 }
@@ -295,7 +209,7 @@ std::string parse_message(char msg[256]){
 void rcv_msg(int ConnectFD){
 	char buffer[256];
 	std::string slave_msg;
-	bool msg_from_slave = false;
+	//bool msg_from_slave = false;
 	std::string result;
 	int n;
 	do{
@@ -303,16 +217,35 @@ void rcv_msg(int ConnectFD){
 		n = read(ConnectFD,buffer,255);
 		std::string temp(buffer, 256);
 		if (n < 0) perror("ERROR reading from socket");
-		printf("Client %d: [%s]\n", ConnectFD, buffer);
-		
-		if (temp.substr(0, 9) == "SLAVE_MSG"){
+
+		if (temp.substr(0, 5) == "slave"){
+			printf("Slave %d: [%s]\n", ConnectFD, buffer);
+			
+			char *mensaje = new char[men.size()+1];
+			std::strcpy(mensaje, men.c_str());
+			parse_message(mensaje);
+		}
+		/*else if(temp.substr(0, 6) == "client"){
+			printf("Client %d: [%s]\n", ConnectFD, buffer);
+			
+			string sender = slice_string(temp);
+			transform(sender.begin(), sender.end(),sender.begin(), ::tolower);
+			
+		}
+		else{
+			cout<<"Query not understood"<<endl;
+		}*/
+		/*
+		if (temp.substr(0, 9) == "SLAVE_MSG" && !msg_from_slave){
 			msg_from_slave = true;
-		} else msg_from_slave = false;
 		
-		if (!msg_from_slave){
+		} 
+		else msg_from_slave = false;
+		*/
+	/*	if (!msg_from_slave){
 			result = parse_message(buffer);
 			n = write(ConnectFD, result.c_str(), result.size());
-		}
+		}*/
 		
 	}while ( strcmp(msg, "chau") != 0);
 	
@@ -325,7 +258,7 @@ int main(void) {
 	struct sockaddr_in stSockAddr;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
-	int Res;
+	//int Res;
 	
 	if(-1 == SocketFD)
 	{
@@ -351,6 +284,8 @@ int main(void) {
 		exit(EXIT_FAILURE);
 	}
 	
+
+
 	for(;;){
 		ConnectFD = accept(SocketFD, NULL, NULL);
 		
@@ -365,6 +300,10 @@ int main(void) {
 			/* perform read write operations ... */
 			std::thread t1(rcv_msg, ConnectFD);
 			t1.detach();
+			
+			
+
+			
 		} else {
 			shutdown(ConnectFD, SHUT_RDWR);
 			close(ConnectFD);
