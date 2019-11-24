@@ -31,6 +31,22 @@ int PORT = 40000;
 
 bool end_connection = false;
 
+/*void requesting_access(int SocketFD, string identificador){
+	string request="Slave requesting access "+identificador;
+	int n = write(SocketFD, "Slave requesting access", 26);
+	
+	n = read(SocketFD,buffer,255);
+	
+	if (strcmp(buffer, "OK.") != 0){
+		printf("Erroneous confirmation. Ending connection\n");
+		shutdown(SocketFD, SHUT_RDWR);
+		close(SocketFD);
+	} else {
+		n = write(SocketFD, "OK.", 3);
+		printf("Connection to database established. SLAVE.\n");
+	}
+}*/
+
 string slice_string(string &s){
 	string delimiter = " ";
 	int pos = s.find(delimiter);
@@ -124,6 +140,26 @@ string lrtrim(string str) {
 	return str ; 
 }
 
+int get_id(){
+	ifstream fs;
+	fs.open("slave.txt");
+	
+	string line, value;
+	value.clear();
+	if (fs.is_open()){
+		getline(fs, line);
+		int i = 0;
+		while(line[i] != '-'){ //mejorar pls
+			value += line[i++];
+		}
+		if (value.size() == 0) return 0;
+		
+		//FALTA CONSIDERAR ESPACIOS
+		
+		return hash_function(value);
+	} else return 0;
+}
+
 string insert_node(string s){
 	std::string return_to_server; //result to be sent to client
 	string node_id = slice_string(s);
@@ -210,19 +246,23 @@ std::string parse_message(string msg){
 	
 }
 
-
-void requesting_access(int SocketFD){
-	write(SocketFD, "Requesting access.", 19);
-	bzero(buffer,256);
-	 read(SocketFD,buffer,255);
+void requesting_access(int SocketFD, string identificador){ //new requesting access
+	string request="Slave requesting access "+identificador;
+	int n = write(SocketFD, "Slave requesting access", 23+1);
+	
+	sleep(1);
+	
+	n = write(SocketFD, identificador.c_str(), identificador.size());
+	
+	n = read(SocketFD,buffer,255);
 	
 	if (strcmp(buffer, "OK.") != 0){
 		printf("Erroneous confirmation. Ending connection\n");
 		shutdown(SocketFD, SHUT_RDWR);
 		close(SocketFD);
 	} else {
-		write(SocketFD, "OK.", 3);
-		printf("Connection to database established\n");
+		n = write(SocketFD, "OK.", 3);
+		printf("Connection to database as a slave established.\n");
 	}
 }
 	
@@ -248,42 +288,26 @@ void rcv_msg(){
 		n = read(SocketFD,buffer,255);
 		
 		std::string temp(buffer, 256);
-	//	cout<<"TEMP:"<<temp<<"|"<<endl;
+	
 		std::size_t found = temp.find('\0');
-		//cout<<"POS"<<found<<endl;
+	
 		temp = temp.substr(0,found);
-	//	cout<<"TEMP:"<<temp<<"|"<<endl;
+	
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
-
 		
 		if (temp.substr(0, 6) == "server"){
 			
 			slice_string(temp);
 			cout<<temp<<endl;
 			result = parse_message(temp);
-			/*n = write(SocketFD, result.c_str(), result.size());
-			*/
+			n = write(SocketFD, result.c_str(), result.size());
 			
-		}
-		else if(temp.substr(0, 6) == "client"){
-			printf("Client %d: [%s]\n", SocketFD, buffer);
-			/*
-			string sender = slice_string(temp);
-			transform(sender.begin(), sender.end(),sender.begin(), ::tolower);
-			*/
-		}
-		
-		
-		
-		
-		
-		
+		}		
 		printf("Server: [%s]\n",buffer);
-	} while(strcmp(buffer, "chau") != 0);
+	} while(!end_connection);
 	
-	end_connection = false;
-	
+	end_connection = true;
 }
 			
 int main(void){
@@ -327,12 +351,14 @@ int main(void){
 	/*do{
 	}while(strcmp(buffer, "chau") != 0); */
 	
-	requesting_access(SocketFD);
+	string id = to_string(get_id());
 	
-	std::thread t1(send_msg);
+	requesting_access(SocketFD, id);
+	
+	//std::thread t1(send_msg);
 	std::thread t2(rcv_msg);
 	
-	t1.join();
+	//t1.join();
 	t2.join();
 	shutdown(SocketFD, SHUT_RDWR);
 	
