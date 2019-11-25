@@ -30,7 +30,7 @@ vector<bool> cur_ids; //vector to know available ids
 
 int node_counter = 0;   
 
-int PORT = 40001;
+int PORT = 40003;
 
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
@@ -258,7 +258,12 @@ std::string select_node(const char* msg, int lvl){
 	cout<<lvl<<endl;
 	hash++;
 	std::fstream file;
+	/// Cambiar
 	string slave_txt = "slave_" + to_string(hash)+ ".txt";
+	//string slave_txt = "slave.txt";
+	
+	
+	
 	//cout<<slave_txt<<endl;
 	file.open(slave_txt, ios::in);
 	

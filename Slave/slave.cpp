@@ -27,7 +27,7 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40001;
+int PORT = 40003;
 
 bool end_connection = false;
 
@@ -132,15 +132,21 @@ string insert_node(string s){
 	string node_id = slice_string(s);
 	//cout<<"NODE ID: " <<node_id<<endl;
 	//cout<<"RESTO: "<<s<<endl;
+	vector<string> attr;
 	
-	
-	vector<string> attr = separate_attributes(s);
-	
-	
-	for(uint i=0;i<attr.size();++i){
-		attr[i] = lrtrim(attr[i]);
-		//cout<<"|"<<attr[i]<<"|"<<endl;
+	if(s.size()>5){/// 2 minimo {a:c}
+		attr = separate_attributes(s);
+		for(uint i=0;i<attr.size();++i){
+			attr[i] = lrtrim(attr[i]);
+			//cout<<"|"<<attr[i]<<"|"<<endl;
+		}
 	}
+	else{
+		attr.resize(0);
+	}
+	
+	
+	
 	/*
 	for(uint i=0;i<attr.size();++i){
 		cout<<"ATTRIBUTE:|"<<attr[i]<<"|"<<endl;
@@ -149,13 +155,14 @@ string insert_node(string s){
 		
 	}
 	*/
-	/// Cambiar por la que tiene que consultar al server 
+	
 	int hash = hash_function(node_id);
-	/// -------
 	
-	/// Insertar en el slave
-	
+	/// Cambiar
 	string slave_txt = "slave_" + to_string(hash)+ ".txt";
+	/// Por esto
+	// string slave_txt = "slave.txt";
+	
 	//cout<<slave_txt<<endl;
 	ofstream fs;
 	fs.open(slave_txt, ios::app);
@@ -169,6 +176,7 @@ string insert_node(string s){
 			fs<<attr[i]<<" : "<<attr[i+1]<<endl;
 		}
 	}
+	
 
 	fs.close();	
 	
@@ -187,7 +195,12 @@ string insert_relation(string s){
 
 	
 	std::fstream myfile, outfile;
+	/// Cambiar
 	string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	/// Por esto
+	
+	// string slave_txt = "slave.txt";
+	
 	//cout<<slave_txt<<endl;
 	myfile.open(slave_txt, ios::in);
 	
@@ -196,13 +209,19 @@ string insert_relation(string s){
 	vector<string> txt;
 	txt.push_back(rel);
 	//cout<<"INSERT_RELATION"<<endl;
+	bool isInserted = false;
 	if (myfile.is_open()){
 		while ( getline (myfile,line) && !myfile.eof()){
 			txt.push_back(line);
+			if(line == nodes[0]){
+				isInserted = true;
+			}
 		}
 		myfile.close();
 		
 	}
+	
+
 	
 	outfile.open(slave_txt, ios::out );
 	outfile.clear();
@@ -214,6 +233,11 @@ string insert_relation(string s){
 	}
 	
 	outfile.close();
+	
+	if(!isInserted){
+		string toInsert = nodes[0] + " {}";
+		insert_node(toInsert);
+	}
 	
 	return "slave Adjacency was inserted";
 }

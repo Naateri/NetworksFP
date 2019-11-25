@@ -19,7 +19,7 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40001;
+int PORT = 40003;
 
 bool end_connection = false;
 
