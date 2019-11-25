@@ -13,28 +13,50 @@
 #include <iostream>
 #include <thread>
 #include <string>
+using namespace std;
 
 int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40002;
+int PORT = 40001;
 
 bool end_connection = false;
 
 void requesting_access(int SocketFD){
-	int n = write(SocketFD, "Requesting access.", 19);
+	write(SocketFD, "Requesting access.", 19);
 	bzero(buffer,256);
-	n = read(SocketFD,buffer,255);
+	read(SocketFD,buffer,255);
 	
 	if (strcmp(buffer, "OK.") != 0){
 		printf("Erroneous confirmation. Ending connection\n");
 		shutdown(SocketFD, SHUT_RDWR);
 		close(SocketFD);
 	} else {
-		n = write(SocketFD, "OK.", 3);
+		 write(SocketFD, "OK.", 3);
 		printf("Connection to database established\n");
 	}
+}
+
+void closing_connection(){
+	
+	write(SocketFD, "Closing Connection.", 19+1);
+	bzero(buffer,256);
+	read(SocketFD,buffer,4); //OK
+	
+	if (strcmp(buffer, "OK.") == 0){
+		bzero(buffer,256);
+		read(SocketFD, buffer, 13+2); //Are you sure?
+		if (strcmp(buffer, "Are you sure?") == 0){
+			write(SocketFD, "Yes.", 4+1);
+			printf("Ending connection with server. Closing socket.\n");
+		} else {
+			printf("Erroneous confirmation. Server not asking.\n");
+		}
+	} else {
+		printf("Erroneous confirmation. Server not confirming.\n");
+	}
+	
 }
 
 void send_msg(){
@@ -42,35 +64,56 @@ void send_msg(){
     int n;
 	do{
 		std::cout << "Type your message: ";
-		std::cin.getline(msg, 255);
+		string input ; 
+		std::getline (std::cin,input);
+		input = "client " + input;
+		
+		strcpy(msg, input.c_str()); 
+		
+		
 		n = write(SocketFD,msg,255); //cuantos bytes estoy mandando
 
 		//n dice cuantos bytes se han mandado
 		msg[n] = '\0';
+		
+		if ((char)msg[0] == '0'){
+			end_connection = true;
+		}
+		
 	} while(!end_connection);
 }
 
 void rcv_msg(){
-	//char buffer[256];
+	char buffer[2048];
+	//string buffer;
     int n;
 	do{	
-		bzero(buffer,256);
-		n = read(SocketFD,buffer,255);
+		bzero(buffer,2048);
+		/*n = read(SocketFD,buffer,1);
+		if(buffer[0] == 's'){
+			n = read(SocketFD,buffer,6);
+			int resultSize = stoi(buffer);
+			n = read(SocketFD,buffer,resultSize);
+		}*/
+		
+		n = read(SocketFD, buffer, 2048);
+		
 		if (n < 0) perror("ERROR reading from socket");
 		buffer[n] = '\0';
 		printf("Server: [%s]\n",buffer);
-	} while(strcmp(buffer, "chau") != 0);
+	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
-	end_connection = false;
+	end_connection = true;
 	
 }
  
 int main(void){
+	cout<<"CLIENT"<<endl;
     struct sockaddr_in stSockAddr;
     int Res;
     SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    int n;
-    char msg[256];
+   
+   // char msg[256];
  
     if (-1 == SocketFD)
     {
@@ -113,6 +156,9 @@ int main(void){
 
 	t1.join();
 	t2.join();
+	
+	closing_connection();
+	
     shutdown(SocketFD, SHUT_RDWR);
  
     close(SocketFD);
