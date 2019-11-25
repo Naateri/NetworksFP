@@ -30,7 +30,7 @@ vector<bool> cur_ids; //vector to know available ids
 
 int node_counter = 0;   
 
-int PORT = 40002;
+int PORT = 40004;
 
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
@@ -312,9 +312,15 @@ std::string select_node(const char* msg, int lvl){
 	
 	return return_to_client;
 }
+	
+string delete_node(string nodes){
+	return "Deleted node";
+	
+}
 
 std::string delete_query(string msg){
 	std::string return_to_client; //result to be sent to client
+	string num_query; 
 	//cout<<msg<<endl;
 	bool deleteNode = true;
 	for(uint i=0;i<msg.size();++i){
@@ -326,8 +332,25 @@ std::string delete_query(string msg){
 	
 	/// Borrando nodo
 	if(deleteNode == true){
-		cout<<"Borrar nodo"<<endl;
-		return "Borrar nodo";
+		delSpaces(msg);
+		int hash = hash_function(msg);
+		
+		bool connection_slave = false;
+	
+		std::map<int,int>::iterator it;
+		it = slaves.find(hash);
+		if (it != slaves.end()){ 
+			connection_slave = true;
+			cout<<"Verifying the connection with the slave"<<endl;
+			num_query = "server adj ";
+			string msg_slave = num_query + msg ;
+			write(slaves[hash], msg_slave.c_str(), msg_slave.size());
+			
+			return "Verifying the connection with the slave.";
+		}
+		else
+		
+			return "Unconnected slave. Please try again later.";
 	}
 	
 	/// Borrando relacion
@@ -355,7 +378,7 @@ std::string delete_query(string msg){
 		}
 		
 		if(connection_slave1 && connection_slave2){
-			string num_query = "server 4 ";
+			num_query = "server 4 ";
 			if(connection_slave1){
 				cout<<"- "<<nodes[0] << " - " << nodes[1]<< " deleted\n";
 				string msg_slave = num_query + nodes[0] + " " + nodes[1];
@@ -423,7 +446,13 @@ void rcv_msg(int ConnectFD, bool slave){
 
 		if (temp.substr(0, 5) == "slave" && slave){ //slave
 			slice_string(temp);
+			string d = slice_string(temp); 
+			if(d == "delete"){ /// Se estan pasando las adyacencias del nodo que queremos borrar
+				
+			}
+			else
 			cout<<"Slave : [ "<<temp<<" ]"<<endl; 
+			
 			
 			//printf("Slave %d: [%s]\n", ConnectFD, buffer);
 			/*

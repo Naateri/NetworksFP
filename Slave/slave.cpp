@@ -27,7 +27,7 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40002;
+int PORT = 40004;
 
 bool end_connection = false;
 
@@ -46,7 +46,10 @@ bool end_connection = false;
 		printf("Connection to database established. SLAVE.\n");
 	}
 }*/
-
+void delSpaces(string &s){
+	s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
+}	
+	
 string slice_string(string &s){
 	string delimiter = " ";
 	int pos = s.find(delimiter);
@@ -158,10 +161,10 @@ string insert_node(string s){
 	
 	int hash = hash_function(node_id);
 	
-	/// Cambiar
-	string slave_txt = "slave_" + to_string(hash)+ ".txt";
-	/// Por esto
-	// string slave_txt = "slave.txt";
+	
+	///string slave_txt = "slave_" + to_string(hash)+ ".txt";
+	
+	string slave_txt = "slave.txt";
 	
 	//cout<<slave_txt<<endl;
 	ofstream fs;
@@ -195,11 +198,10 @@ string insert_adjacency(string s){
 
 	
 	std::fstream myfile, outfile;
-	/// Cambiar
-	string slave_txt = "slave_" + to_string(num_file)+ ".txt";
-	/// Por esto
 	
-	// string slave_txt = "slave.txt";
+	///string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	
+	string slave_txt = "slave.txt";
 	
 	//cout<<slave_txt<<endl;
 	myfile.open(slave_txt, ios::in);
@@ -242,6 +244,50 @@ string insert_adjacency(string s){
 	return "slave Adjacency was inserted";
 }
 	
+string all_adjacencies(string msg){
+	delSpaces(msg);
+	string node_id = msg;
+	int num_file = hash_function(msg);
+	
+	std::fstream myfile;
+	
+	//string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	string slave_txt = "slave.txt";
+	
+	myfile.open(slave_txt, ios::in);
+	
+	string line;
+	
+	vector<string> txt;
+	txt.push_back(node_id);
+	//cout<<"INSERT_RELATION"<<endl;
+	bool isInserted = false;
+	if (myfile.is_open()){
+		while ( getline (myfile,line) && !myfile.eof()){
+			if(line == "\0"){
+				break;
+			}
+			
+			size_t found = line.find(node_id);
+			if (found != string::npos) 
+				txt.push_back(line);
+			
+		}
+		myfile.close();
+		
+	}
+	
+	for(int i=0;i<txt.size();++i){
+		cout<<txt[i]<<endl;
+	}
+	
+	/// Utilizar un set
+	///Falta terminar	
+	
+	return "slave hola" ;
+	
+}
+	
 string delete_adjacency(string s){
 	vector<string> nodes = separate_string(s , " ");
 	
@@ -253,11 +299,10 @@ string delete_adjacency(string s){
 	
 	
 	std::fstream myfile, outfile;
-	/// Cambiar
-	string slave_txt = "slave_" + to_string(num_file)+ ".txt";
-	/// Por esto
 	
-	// string slave_txt = "slave.txt";
+	//string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	
+	string slave_txt = "slave.txt";
 	
 	//cout<<slave_txt<<endl;
 	myfile.open(slave_txt, ios::in);
@@ -314,6 +359,10 @@ std::string parse_message(string msg){
 		cout<<"Delete node"<<endl;
 		//res = delete_node(msg);
 	} 
+	else if(type_query == "adj"){
+		cout<<"Requesting all adjacencies of a node"<<endl;
+		res = all_adjacencies(msg);
+	}
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
 		res = delete_adjacency(msg);
