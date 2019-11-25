@@ -27,7 +27,7 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40003;
+int PORT = 40002;
 
 bool end_connection = false;
 
@@ -184,7 +184,7 @@ string insert_node(string s){
 	
 }
 	
-string insert_relation(string s){
+string insert_adjacency(string s){
 	vector<string> nodes = separate_string(s , " ");
 	
 	
@@ -242,21 +242,83 @@ string insert_relation(string s){
 	return "slave Adjacency was inserted";
 }
 	
+string delete_adjacency(string s){
+	vector<string> nodes = separate_string(s , " ");
+	
+	
+	string rel =nodes[0] +" - "+nodes[1];
+	
+	int num_file = hash_function(nodes[0]);
+	
+	
+	
+	std::fstream myfile, outfile;
+	/// Cambiar
+	string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	/// Por esto
+	
+	// string slave_txt = "slave.txt";
+	
+	//cout<<slave_txt<<endl;
+	myfile.open(slave_txt, ios::in);
+	
+	string line;
+	
+	vector<string> txt;
+
+	if (myfile.is_open()){
+		while ( getline (myfile,line) && !myfile.eof()){
+		
+			if(line != rel){
+				txt.push_back(line);
+			}
+			
+		}
+		myfile.close();
+	}
+	
+	outfile.open(slave_txt, ios::out );
+	outfile.clear();
+	outfile.seekp(0);
+	
+	for(uint i=0;i<txt.size();++i){
+		//cout<<txt[i]<<endl;
+		outfile <<txt[i]<<endl;
+	}
+	
+	outfile.close();
+	
+	return "slave Adjacency was deleted";
+}
+	
 std::string parse_message(string msg){
 	string res;
 	
-	string type_insert = slice_string(msg);
-	transform(type_insert.begin(), type_insert.end(),type_insert.begin(), ::tolower);
+	string type_query = slice_string(msg);
+	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
 	
 	
-	if(type_insert == "0"){
+	if(type_query == "0"){
 		cout<<"Inserting node"<<endl;
 		res = insert_node(msg);
 	}
-	else if(type_insert == "1"){
+	else if(type_query == "1"){
 		cout<<"Inserting adjacency"<<endl;
-		res = insert_relation(msg);
-	} else {
+		res = insert_adjacency(msg);
+	}
+	else if(type_query == "2"){
+		cout<<"Select"<<endl;
+		//res = select(msg);
+	} 
+	else if(type_query == "3"){
+		cout<<"Delete node"<<endl;
+		//res = delete_node(msg);
+	} 
+	else if(type_query == "4"){
+		cout<<"Delete adjacency"<<endl;
+		res = delete_adjacency(msg);
+	} 
+	else {
 		res = "Error. Query not understood\n";
 	}
 	

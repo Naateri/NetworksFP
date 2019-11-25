@@ -30,7 +30,7 @@ vector<bool> cur_ids; //vector to know available ids
 
 int node_counter = 0;   
 
-int PORT = 40003;
+int PORT = 40002;
 
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
@@ -216,30 +216,23 @@ std::string insert(string msg){
 		//cout<< "Slave 1: "<<connection_slave1<<" Hash : "<<hash1<< endl;
 		//cout<< "Slave 2: "<<connection_slave2<< "Hash : "<<hash2<<endl;
 		
-		if(connection_slave1){
-			cout<<"- "<<nodes[0] << " - " << nodes[1]<< " inserted\n";
-			string msg_slave = "server 1 " + nodes[0] + " " + nodes[1];
-			write(slaves[hash1], msg_slave.c_str(), msg_slave.size());
-		}
-		else{
-			cout<<"Unconnected slave. Please try again later. (1)\n";
-			
-		}
-		
-		if( connection_slave2){
-			cout<<"- "<<nodes[1] << " - " << nodes[0]<< " inserted\n";
-			string msg_slave = "server 1 " + nodes[1] + " " + nodes[0];
-			write(slaves[hash2], msg_slave.c_str(), msg_slave.size());
-		}
-		else{
-			cout<<"Unconnected slave. Please try again later. (2)\n";
-		}
-		
 		if(connection_slave1 && connection_slave2){
-			return "Both relations were inserted";
+			if(connection_slave1){
+				cout<<"- "<<nodes[0] << " - " << nodes[1]<< " inserted\n";
+				string msg_slave = "server 1 " + nodes[0] + " " + nodes[1];
+				write(slaves[hash1], msg_slave.c_str(), msg_slave.size());
+			}
+			
+			if( connection_slave2){
+				cout<<"- "<<nodes[1] << " - " << nodes[0]<< " inserted\n";
+				string msg_slave = "server 1 " + nodes[1] + " " + nodes[0];
+				write(slaves[hash2], msg_slave.c_str(), msg_slave.size());
+			}
+			return "Adjacency inserted";
 		}
+		
 		else
-		   return "Only one or none adjacency was inserted";
+		   return "Unconnected slave. Please try again later.";
 		
 	}
 
@@ -320,6 +313,70 @@ std::string select_node(const char* msg, int lvl){
 	return return_to_client;
 }
 
+std::string delete_query(string msg){
+	std::string return_to_client; //result to be sent to client
+	//cout<<msg<<endl;
+	bool deleteNode = true;
+	for(uint i=0;i<msg.size();++i){
+		if(msg[i] == '-'){
+			deleteNode = false;
+			break;
+		}
+	}
+	
+	/// Borrando nodo
+	if(deleteNode == true){
+		cout<<"Borrar nodo"<<endl;
+		return "Borrar nodo";
+	}
+	
+	/// Borrando relacion
+	else{ 
+		vector<string> nodes = separate_string(msg,"-");
+		
+		delSpaces(nodes[0]);
+		delSpaces(nodes[1]);
+		
+		int hash1 = hash_function(nodes[0]);
+		int hash2 = hash_function(nodes[1]);
+		
+		/// Verificar conexion con ambos slaves
+		bool connection_slave1 = false;
+		bool connection_slave2 = false;
+		
+		std::map<int,int>::iterator it;
+		it = slaves.find(hash1);
+		if (it != slaves.end()){ 
+			connection_slave1 = true;
+		}
+		it = slaves.find(hash2);
+		if (it != slaves.end()){ 
+			connection_slave2 = true;
+		}
+		
+		if(connection_slave1 && connection_slave2){
+			string num_query = "server 4 ";
+			if(connection_slave1){
+				cout<<"- "<<nodes[0] << " - " << nodes[1]<< " deleted\n";
+				string msg_slave = num_query + nodes[0] + " " + nodes[1];
+				write(slaves[hash1], msg_slave.c_str(), msg_slave.size());
+			}
+			
+			if( connection_slave2){
+				cout<<"- "<<nodes[1] << " - " << nodes[0]<< " deleted\n";
+				string msg_slave = num_query + nodes[1] + " " + nodes[0];
+				write(slaves[hash2], msg_slave.c_str(), msg_slave.size());
+			}
+			return "Adjacency deleted";
+		}
+		
+		else
+		   return "Unconnected slave. Please try again later.";
+	
+	}
+}
+	
+
 std::string parse_message_client(char* msg){
 	
 	int level;
@@ -342,7 +399,11 @@ std::string parse_message_client(char* msg){
 		/// Falta dividir la consulta para saber el nivel 
 		///
 		return select_node(str_msg.c_str(), level);
-	} else {
+	} 
+	else if(query == "delete"){
+		return delete_query(str_msg);
+	}
+	else {
 		return "Error. Query not understood\n";
 	}
 }	
