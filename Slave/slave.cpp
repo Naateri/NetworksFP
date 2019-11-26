@@ -335,7 +335,66 @@ string delete_adjacency(string s){
 	
 	return "slave Adjacency was deleted";
 }
-	
+
+std::string select(std::string msg){
+	cout<<"Select"<<endl;
+	std::fstream file;
+	string slave_txt = "slave.txt";
+	file.open(slave_txt, ios::in);
+	string line;
+	string tempRes;
+	vector<string> separate = separate_string(msg, " ");
+	vector<string> nodes;
+	nodes.push_back(separate[separate.size()-2]);
+	bool attributes = 0;
+	bool findAttibutes = 0;
+	bool once = 1;
+		
+	cout<<"Select information"<<endl;
+	cout<<separate[separate.size()-1][1]<<endl;
+	cout<<separate[separate.size()-1][0]<<endl;
+	string tempLevelString(1,separate[separate.size()-1][1]);
+	if(stoi(tempLevelString) == 1){
+		while ( getline (file,line) && !file.eof()){
+			
+			if(line == "" && once){
+				
+				tempRes+= "Attributes: ";
+				attributes = 1;
+				once = 0;
+			}
+			if(!attributes){
+				if(separate[separate.size()-1][0] == line[0]){
+					tempRes+= line + " == ";
+					vector<string> temp = separate_string(line, " ");
+					nodes.push_back(temp[temp.size()-1]);
+				}
+			}else{
+				for(uint i = 0;i<nodes.size();++i){
+					if(nodes[i][0] == line[0] && line != ""){
+						findAttibutes = 1;
+						break;
+					}
+				}
+				if(findAttibutes){
+					tempRes+=line+" == ";
+					findAttibutes =0;
+				}
+			}
+			
+		}
+		string lengthString = to_string(tempRes.size());
+		while(lengthString.size()<6){
+			lengthString = "0"+lengthString;
+		}
+		tempRes =  "s"+lengthString+tempRes+'\0';
+		file.close();
+		
+	}
+	//cout<<"res 1 "<<tempRes<<endl;
+	return tempRes;
+}
+
 std::string parse_message(string msg){
 	string res;
 	
@@ -352,65 +411,7 @@ std::string parse_message(string msg){
 		res = insert_adjacency(msg);
 	}
 	else if(type_query == "2"){
-		cout<<"Select"<<endl;
-		std::fstream file;
-		string slave_txt = "slave.txt";
-		//res = select(msg);
-		file.open(slave_txt, ios::in);
-		
-		string line,res;
-		vector<string> separate = separate_string(msg, " ");
-		vector<string> nodes;
-		nodes.push_back(separate[separate.size()-2]);
-		bool attributes = 0;
-		bool findAttibutes = 0;
-		bool once = 1;
-		if (file.is_open()){
-			cout<<"Select information"<<endl;
-			cout<<separate[separate.size()-1][1]<<endl;
-			cout<<separate[separate.size()-1][0]<<endl;
-			string tempLevelString(1,separate[separate.size()-1][1]);
-			if(stoi(tempLevelString) == 1){
-				while ( getline (file,line) && !file.eof()){
-					
-					if(line == "" && once){
-						
-						res+= "Attributes: ";
-						attributes = 1;
-						once = 0;
-					}
-					if(!attributes){
-						if(separate[separate.size()-1][0] == line[0]){
-							res+= line + " == ";
-							vector<string> temp = separate_string(line, " ");
-							nodes.push_back(temp[temp.size()-1]);
-						}
-					}else{
-						for(uint i = 0;i<nodes.size();++i){
-							if(nodes[i][0] == line[0] && line != ""){
-								findAttibutes = 1;
-								break;
-							}
-						}
-						if(findAttibutes){
-							res+=line+" == ";
-							findAttibutes =0;
-						}
-					}
-					
-				}
-				string lengthString = to_string(res.size());
-				while(lengthString.size()<6){
-					lengthString = "0"+lengthString;
-				}
-				res =  "s"+lengthString+res;
-				cout<<"Res" << res<<endl;
-				return res;
-				file.close();
-			}
-			
-		}
-		
+		res = select(msg);
 	} 
 	else if(type_query == "3"){
 		cout<<"Delete node"<<endl;
@@ -427,7 +428,7 @@ std::string parse_message(string msg){
 	else {
 		res = "Error. Query not understood\n";
 	}
-	
+	cout<<"Res: "<<res<<endl;
 	return res;
 	
 }

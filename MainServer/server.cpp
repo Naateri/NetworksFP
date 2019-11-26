@@ -266,13 +266,32 @@ std::string select_node(const char* msg, int lvl){
 		/// Madarle al slave lo que tiene que insertar
 		/// 0 es para insertar un nodo 
 		/// 1 es para insertar una relacion
-		
+		char buffer2[2048];
+		bzero(buffer2,2048);
+		string resTemp;
+		int n2;
 		string msg_slave = "server 2 ";
 		string tempNodeString (1,temp[0]);
 		msg_slave+=tempNodeString + to_string(lvl);
-		//cout<<"Mensaje enviado al slave" <<msg_slave<<endl;
+		cout<<"Mensaje enviado al slave" <<msg_slave<<endl;
 		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
-		return "Node Select";
+		n2 = read(slaves[hash],buffer2,256);
+		cout<<"Resultado"<<endl;
+		cout<<buffer2<<endl;
+		return_to_client = buffer2;
+		/*if(buffer2[0] == 's'){
+			
+			n = read(slaves[hash],buffer2,6);
+			string temp = buffer2;
+			resTemp+="s"+temp;
+			int resultSize = stoi(buffer2);
+			n = read(slaves[hash],buffer2,resultSize);
+			temp = buffer2;
+			resTemp += temp;
+			return_to_client = resTemp;
+		}
+		
+		return return_to_client;*/
 		//return "Node inserted";
 		
 	}else
@@ -470,15 +489,10 @@ void rcv_msg(int ConnectFD, bool slave){
 		bzero(buffer,256);
 		n = read(ConnectFD,buffer,255);
 		std::string temp(buffer, 256);
-		cout<<"Temp: ";
-		cout<<temp<<endl;
-		cout<<"S: "<<(temp.substr(0, 5) != "slave")<<endl;
+		cout<<"Cadena recibida: "<<temp<<endl;
 		if (n < 0) perror("ERROR reading from socket");
-		if(temp.substr(0,1)=="s" && temp.substr(0, 5) != "slave"){
-			cout<<"Envio If de envio "<<endl;
-			cout<<temp<<endl;
-			result = temp;
-			n = write(ConnectFD, result.c_str(), result.size());
+		if(temp.substr(0, 1)=="s" && temp.substr(0, 5) != "slave"){
+			n = write(ConnectFD, temp.c_str(), temp.size());
 		}else if (temp.substr(0, 5) == "slave" && slave){ //slave
 			slice_string(temp);
 			string d = slice_string(temp); 
@@ -498,14 +512,8 @@ void rcv_msg(int ConnectFD, bool slave){
 		}
 		else if(temp.substr(0, 6) == "client"){
 			result = parse_message_client(buffer);
-			if(result != "Node Select"){
-				n = write(ConnectFD, result.c_str(), result.size());
-			}else{
-				cout<<temp<<" n"<<endl;
-				if(temp.substr(0,1)=="s" && temp.substr(0, 5) != "slave"){
-					n = write(ConnectFD, temp.c_str(), temp.size());
-				}
-			}
+			n = write(ConnectFD, result.c_str(), result.size());
+			
 			
 		}
 		else if (strcmp(buffer, "Closing Connection.") == 0){
