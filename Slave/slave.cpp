@@ -353,7 +353,64 @@ std::string parse_message(string msg){
 	}
 	else if(type_query == "2"){
 		cout<<"Select"<<endl;
+		std::fstream file;
+		string slave_txt = "slave.txt";
 		//res = select(msg);
+		file.open(slave_txt, ios::in);
+		
+		string line,res;
+		vector<string> separate = separate_string(msg, " ");
+		vector<string> nodes;
+		nodes.push_back(separate[separate.size()-2]);
+		bool attributes = 0;
+		bool findAttibutes = 0;
+		bool once = 1;
+		if (file.is_open()){
+			cout<<"Select information"<<endl;
+			cout<<separate[separate.size()-1][1]<<endl;
+			cout<<separate[separate.size()-1][0]<<endl;
+			string tempLevelString(1,separate[separate.size()-1][1]);
+			if(stoi(tempLevelString) == 1){
+				while ( getline (file,line) && !file.eof()){
+					
+					if(line == "" && once){
+						
+						res+= "Attributes: ";
+						attributes = 1;
+						once = 0;
+					}
+					if(!attributes){
+						if(separate[separate.size()-1][0] == line[0]){
+							res+= line + " == ";
+							vector<string> temp = separate_string(line, " ");
+							nodes.push_back(temp[temp.size()-1]);
+						}
+					}else{
+						for(uint i = 0;i<nodes.size();++i){
+							if(nodes[i][0] == line[0] && line != ""){
+								findAttibutes = 1;
+								break;
+							}
+						}
+						if(findAttibutes){
+							res+=line+" == ";
+							findAttibutes =0;
+						}
+					}
+					
+				}
+				string lengthString = to_string(res.size());
+				while(lengthString.size()<6){
+					lengthString = "0"+lengthString;
+				}
+				res =  "s"+lengthString+res;
+				cout<<"Res" << res<<endl;
+				return res;
+				file.close();
+			}
+			
+		}
+		
 	} 
 	else if(type_query == "3"){
 		cout<<"Delete node"<<endl;
@@ -417,7 +474,7 @@ void rcv_msg(){
 		n = read(SocketFD,buffer,255);
 		
 		std::string temp(buffer, 256);
-	
+		cout<<"temp: "<<temp<<endl;
 		std::size_t found = temp.find('\0');
 	
 		temp = temp.substr(0,found);
@@ -428,8 +485,8 @@ void rcv_msg(){
 		if (temp.substr(0, 6) == "server"){
 			
 			slice_string(temp);
-			cout<<temp<<endl;
 			result = parse_message(temp);
+			cout<<"Resultado Select: "<<result<<endl;
 			n = write(SocketFD, result.c_str(), result.size());
 			
 

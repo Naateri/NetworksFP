@@ -240,25 +240,50 @@ std::string insert(string msg){
 }
 
 std::string select_node(const char* msg, int lvl){
+	bool connection_slave = false ;
 	std::string temp(msg); //communicate with appropiate slave
 	std::string return_to_client; //result to be sent to client
 	//put in temp the node value
-	int hash = hash_function(temp);
+	delSpaces(temp);
+	int hash = hash_function(to_string(temp[0]));
 	
-	/// FALTA revisar la conexion 
+	/// FALTA revisar la conexion
 	
+	std::map<int,int>::iterator it;
+	it = slaves.find(hash);
+	if (it != slaves.end()){
+		
+		connection_slave = true;
+	}
+	//hash++;
+	//std::fstream file;
 	
-	cout<<lvl<<endl;
-	hash++;
-	std::fstream file;
 	/// Cambiar
-	string slave_txt = "slave_" + to_string(hash)+ ".txt";
+	if (connection_slave){
+		cout <<"Encontro slave"<<endl;
+		
+		
+		/// Madarle al slave lo que tiene que insertar
+		/// 0 es para insertar un nodo 
+		/// 1 es para insertar una relacion
+		
+		string msg_slave = "server 2 ";
+		string tempNodeString (1,temp[0]);
+		msg_slave+=tempNodeString + to_string(lvl);
+		//cout<<"Mensaje enviado al slave" <<msg_slave<<endl;
+		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
+		return "Node Select";
+		//return "Node inserted";
+		
+	}else
+		return "";
+	//string slave_txt = "slave_" + to_string(hash)+ ".txt";
 	//string slave_txt = "slave.txt";
 	
 	
 	
 	//cout<<slave_txt<<endl;
-	file.open(slave_txt, ios::in);
+	/*file.open(slave_txt, ios::in);
 	
 	string line,res;
 	vector<string> separate = separate_string(temp, " ");
@@ -306,7 +331,7 @@ std::string select_node(const char* msg, int lvl){
 			file.close();
 		}
 		
-	}	
+	}	*/
 	
 	//comunicate with appropiate slave
 	
@@ -417,10 +442,13 @@ std::string parse_message_client(char* msg){
 	if (query == "insert" ){
 		return insert(str_msg);
 	} else if (query == "select"){
-		//cout<<"Entro Select"<<endl;
 		///
 		/// Falta dividir la consulta para saber el nivel 
 		///
+		string tempQuery = str_msg;
+		delSpaces(tempQuery);
+		string tempLevelString(1,tempQuery[tempQuery.size()-1]);
+		level = std::stoi(tempLevelString);
 		return select_node(str_msg.c_str(), level);
 	} 
 	else if(query == "delete"){
@@ -442,9 +470,16 @@ void rcv_msg(int ConnectFD, bool slave){
 		bzero(buffer,256);
 		n = read(ConnectFD,buffer,255);
 		std::string temp(buffer, 256);
+		cout<<"Temp: ";
+		cout<<temp<<endl;
+		cout<<"S: "<<(temp.substr(0, 5) != "slave")<<endl;
 		if (n < 0) perror("ERROR reading from socket");
-
-		if (temp.substr(0, 5) == "slave" && slave){ //slave
+		if(temp.substr(0,1)=="s" && temp.substr(0, 5) != "slave"){
+			cout<<"Envio If de envio "<<endl;
+			cout<<temp<<endl;
+			result = temp;
+			n = write(ConnectFD, result.c_str(), result.size());
+		}else if (temp.substr(0, 5) == "slave" && slave){ //slave
 			slice_string(temp);
 			string d = slice_string(temp); 
 			if(d == "delete"){ /// Se estan pasando las adyacencias del nodo que queremos borrar
@@ -463,7 +498,15 @@ void rcv_msg(int ConnectFD, bool slave){
 		}
 		else if(temp.substr(0, 6) == "client"){
 			result = parse_message_client(buffer);
-			n = write(ConnectFD, result.c_str(), result.size());
+			if(result != "Node Select"){
+				n = write(ConnectFD, result.c_str(), result.size());
+			}else{
+				cout<<temp<<" n"<<endl;
+				if(temp.substr(0,1)=="s" && temp.substr(0, 5) != "slave"){
+					n = write(ConnectFD, temp.c_str(), temp.size());
+				}
+			}
+			
 		}
 		else if (strcmp(buffer, "Closing Connection.") == 0){
 			end_connection = closing_connection(ConnectFD); //client ending connection
