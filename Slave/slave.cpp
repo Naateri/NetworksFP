@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <regex>
 
-#define MAX_SLAVES 5
+#define MAX_SLAVES 2
 #define uint unsigned int
 
 using namespace std;
@@ -27,7 +27,7 @@ int SocketFD;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40004;
+int PORT = 40002;
 
 bool end_connection = false;
 
@@ -267,24 +267,28 @@ string all_adjacencies(string msg){
 			if(line == "\0"){
 				break;
 			}
+
+			string aux = line.substr(0, node_id.size()); 
+			if(aux == node_id){
+				int tam = node_id.size(); 
+				txt.push_back(line.substr(tam+3, line.size()-tam-3));
+			}
 			
-			size_t found = line.find(node_id);
-			if (found != string::npos) 
-				txt.push_back(line);
+			
 			
 		}
 		myfile.close();
 		
 	}
+	string all_adjacencies = "slave delete";
 	
 	for(int i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
+		all_adjacencies += " " + txt[i];
 	}
 	
-	/// Utilizar un set
-	///Falta terminar	
 	
-	return "slave hola" ;
+	
+	return all_adjacencies ;
 	
 }
 	
@@ -327,7 +331,7 @@ string delete_adjacency(string s){
 	outfile.seekp(0);
 	
 	for(uint i=0;i<txt.size();++i){
-		//cout<<txt[i]<<endl;
+		cout<<txt[i]<<endl;
 		outfile <<txt[i]<<endl;
 	}
 	
@@ -336,8 +340,8 @@ string delete_adjacency(string s){
 	return "slave Adjacency was deleted";
 }
 	
-std::string parse_message(string msg){
-	string res;
+void parse_message(string msg){
+	string result;
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
@@ -345,14 +349,17 @@ std::string parse_message(string msg){
 	
 	if(type_query == "0"){
 		cout<<"Inserting node"<<endl;
-		res = insert_node(msg);
+		result = insert_node(msg);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "1"){
 		cout<<"Inserting adjacency"<<endl;
-		res = insert_adjacency(msg);
+		result = insert_adjacency(msg);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "2"){
 		cout<<"Select"<<endl;
+		
 		//res = select(msg);
 	} 
 	else if(type_query == "3"){
@@ -361,17 +368,18 @@ std::string parse_message(string msg){
 	} 
 	else if(type_query == "adj"){
 		cout<<"Requesting all adjacencies of a node"<<endl;
-		res = all_adjacencies(msg);
+		result = all_adjacencies(msg);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
-		res = delete_adjacency(msg);
+		delete_adjacency(msg);
+		
 	} 
 	else {
-		res = "Error. Query not understood\n";
+		result = "Error. Query not understood\n";
+		write(SocketFD, result.c_str(), result.size());
 	}
-	
-	return res;
 	
 }
 
@@ -429,8 +437,8 @@ void rcv_msg(){
 			
 			slice_string(temp);
 			cout<<temp<<endl;
-			result = parse_message(temp);
-			n = write(SocketFD, result.c_str(), result.size());
+			parse_message(temp);
+			
 			
 
 		}

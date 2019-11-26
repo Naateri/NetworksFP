@@ -18,7 +18,7 @@
 #include <map>
 #include <regex>
 
-#define MAX_SLAVES 5
+#define MAX_SLAVES 2
 #define uint unsigned int 
 using namespace std;
 int SocketFD, ConnectFD;
@@ -30,7 +30,7 @@ vector<bool> cur_ids; //vector to know available ids
 
 int node_counter = 0;   
 
-int PORT = 40004;
+int PORT = 40002;
 
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
@@ -313,8 +313,71 @@ std::string select_node(const char* msg, int lvl){
 	return return_to_client;
 }
 	
-string delete_node(string nodes){
-	return "Deleted node";
+bool verify_connection(string n){
+	bool connection = false;
+	int hash = hash_function(n);
+	std::map<int,int>::iterator it;
+	it = slaves.find(hash);
+	if (it != slaves.end()){ 
+		connection = true;
+	}
+	
+	return connection;
+	
+}
+	
+
+void delete_node(string nodes){
+	
+	std::size_t found = nodes.find('\0');
+	
+	nodes = nodes.substr(0,found);
+	
+	
+	vector<string> nodos = separate_string(nodes," ");
+	for(int i=0;i<nodos.size();++i){
+		delSpaces(nodos[i]);
+	}
+	
+	string node_id = nodos[0];
+	
+	//cout<<"NODOS :"<<endl;
+	bool connection_to_all = true; 
+	for(int i=1;i<nodos.size();++i){
+		//cout<<"|"<<nodos[i]<<"|"<<endl;
+		connection_to_all &= verify_connection(nodos[i]);
+		//cout<<"Conexion: "<<connection_to_all <<endl;
+		if(connection_to_all == false){
+			return;// "Unconnected slave. Please try again later.";
+		}
+	}
+	
+	string num_query = "server 4 ";
+	string msg_slave1,msg_slave2; 
+	int i;
+	for(i=1;i<nodos.size();++i){
+		int hash1 = hash_function(node_id);
+		//cout<<"- "<<node_id << " - " << nodos[i]<< " deleted\n";
+		msg_slave1 = "";
+		msg_slave1 = num_query + node_id + " " + nodos[i];
+		cout<<"+ "<<msg_slave1<<"|"<<msg_slave1.size()<<"|"<<endl;
+		write(slaves[hash1], msg_slave1.c_str(), msg_slave1.size());
+		sleep(1);
+	}
+	
+	for(i=1;i<nodos.size();++i){	
+		msg_slave2 = "";
+		int hash2 = hash_function(nodos[i]);
+		string msg_slave2 = num_query + nodos[i] + " " + node_id;
+		cout<<"+ "<<msg_slave2<<"|"<<msg_slave2.size()<<"|"<<endl;
+		write(slaves[hash2], msg_slave2.c_str(), msg_slave2.size());
+		sleep(1);
+		
+	}	
+	
+	///return "Node deleted";
+	
+	
 	
 }
 
@@ -445,13 +508,19 @@ void rcv_msg(int ConnectFD, bool slave){
 		if (n < 0) perror("ERROR reading from socket");
 
 		if (temp.substr(0, 5) == "slave" && slave){ //slave
+			//cout<<"TEMP 0 : "<<temp<<endl;
+			
 			slice_string(temp);
+			string recieved = temp;
+			//cout<<"TEMP: "<<temp<<endl;
+			
 			string d = slice_string(temp); 
 			if(d == "delete"){ /// Se estan pasando las adyacencias del nodo que queremos borrar
-				
+				cout<<"Starting to delete node"<<endl;
+				delete_node(temp); /// Borrar el nodo recien 
 			}
 			else
-			cout<<"Slave : [ "<<temp<<" ]"<<endl; 
+			cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
 			
 			
 			//printf("Slave %d: [%s]\n", ConnectFD, buffer);
@@ -536,6 +605,7 @@ int main(void) {
 		if (connection == 0){
 			/* perform read write operations ... */
 			std::thread t1(rcv_msg, ConnectFD, false); //non-slave
+			
 			t1.detach();
 		} else if (connection == 1) { //slave
 			std::thread t1(rcv_msg, ConnectFD, true); //slave
