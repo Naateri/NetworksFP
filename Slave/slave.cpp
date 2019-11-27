@@ -351,8 +351,10 @@ std::string select(std::string msg){
 	bool once = 1;
 		
 	cout<<"Select information"<<endl;
-	cout<<separate[separate.size()-1][1]<<endl;
-	cout<<separate[separate.size()-1][0]<<endl;
+	cout<<separate[separate.size()-1]<<endl;
+	string CIDLenght = separate[separate.size()-1].substr(2,6);
+	string CID = separate[separate.size()-1].substr(8,stoi(CIDLenght));
+	cout<<"CID"<<CID<<endl;
 	string tempLevelString(1,separate[separate.size()-1][1]);
 	if(stoi(tempLevelString) == 1){
 		while ( getline (file,line) && !file.eof()){
@@ -387,7 +389,8 @@ std::string select(std::string msg){
 		while(lengthString.size()<6){
 			lengthString = "0"+lengthString;
 		}
-		tempRes =  "s"+lengthString+tempRes+'\0';
+		tempRes =  "s"+CIDLenght+CID+lengthString+tempRes+'\0';
+		cout<<"TempRes: "<<tempRes<<endl;
 		file.close();
 		
 	}

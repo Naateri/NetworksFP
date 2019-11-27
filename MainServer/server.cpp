@@ -239,14 +239,14 @@ std::string insert(string msg){
 
 }
 
-std::string select_node(const char* msg, int lvl){
+std::string select_node(const char* msg, int lvl,int CId){
 	bool connection_slave = false ;
 	std::string temp(msg); //communicate with appropiate slave
 	std::string return_to_client; //result to be sent to client
 	//put in temp the node value
 	delSpaces(temp);
 	int hash = hash_function(to_string(temp[0]));
-	
+	cout<<"CId: "<<CId<<endl;
 	/// FALTA revisar la conexion
 	
 	std::map<int,int>::iterator it;
@@ -262,23 +262,25 @@ std::string select_node(const char* msg, int lvl){
 	if (connection_slave){
 		cout <<"Encontro slave"<<endl;
 		
-		
-		/// Madarle al slave lo que tiene que insertar
-		/// 0 es para insertar un nodo 
-		/// 1 es para insertar una relacion
 		char buffer2[2048];
 		bzero(buffer2,2048);
 		string resTemp;
 		int n2;
 		string msg_slave = "server 2 ";
 		string tempNodeString (1,temp[0]);
-		msg_slave+=tempNodeString + to_string(lvl);
-		cout<<"Mensaje enviado al slave" <<msg_slave<<endl;
+		string cid = to_string(CId);
+		string lengthString = to_string(cid.size());
+		while(lengthString.size()<6){
+			lengthString = "0"+lengthString;
+		}
+		msg_slave+=tempNodeString + to_string(lvl)+lengthString+cid;
+		cout<<"Mensaje enviado al slave: " <<msg_slave<<endl;
 		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
-		n2 = read(slaves[hash],buffer2,256);
-		cout<<"Resultado"<<endl;
-		cout<<buffer2<<endl;
-		return_to_client = buffer2;
+		//n2 = read(slaves[hash],buffer2,256);
+		//cout<<"Resultado"<<endl;
+		//cout<<buffer2<<endl;
+		//return_to_client = buffer2;
+		return_to_client  =  "Node llego";
 		/*if(buffer2[0] == 's'){
 			
 			n = read(slaves[hash],buffer2,6);
@@ -294,8 +296,9 @@ std::string select_node(const char* msg, int lvl){
 		return return_to_client;*/
 		//return "Node inserted";
 		
-	}else
-		return "";
+	}else{
+		return "Unconnected slave. Please try again later.";
+	}
 	//string slave_txt = "slave_" + to_string(hash)+ ".txt";
 	//string slave_txt = "slave.txt";
 	
@@ -444,7 +447,7 @@ std::string delete_query(string msg){
 }
 	
 
-std::string parse_message_client(char* msg){
+std::string parse_message_client(char* msg,int CId){
 	
 	int level;
 	string str_msg(msg, strlen(msg));
@@ -468,7 +471,7 @@ std::string parse_message_client(char* msg){
 		delSpaces(tempQuery);
 		string tempLevelString(1,tempQuery[tempQuery.size()-1]);
 		level = std::stoi(tempLevelString);
-		return select_node(str_msg.c_str(), level);
+		return select_node(str_msg.c_str(), level,CId);
 	} 
 	else if(query == "delete"){
 		return delete_query(str_msg);
@@ -491,8 +494,12 @@ void rcv_msg(int ConnectFD, bool slave){
 		std::string temp(buffer, 256);
 		cout<<"Cadena recibida: "<<temp<<endl;
 		if (n < 0) perror("ERROR reading from socket");
-		if(temp.substr(0, 1)=="s" && temp.substr(0, 5) != "slave"){
-			n = write(ConnectFD, temp.c_str(), temp.size());
+		if(temp.substr(0,1)=="s" && slave){
+			int cidLength = stoi(temp.substr(1,6));
+			int cidClient = stoi(temp.substr(7,cidLength));
+			string message = "s"+temp.substr(7+cidLength,temp.size()-7+cidLength);
+			cout<<"cidCLient"<<cidClient<<endl;
+			write(cidClient,message.c_str(),message.size());
 		}else if (temp.substr(0, 5) == "slave" && slave){ //slave
 			slice_string(temp);
 			string d = slice_string(temp); 
@@ -511,7 +518,8 @@ void rcv_msg(int ConnectFD, bool slave){
 			*/
 		}
 		else if(temp.substr(0, 6) == "client"){
-			result = parse_message_client(buffer);
+			result = parse_message_client(buffer,ConnectFD);
+			cout<<"Result: "<<result<<endl;
 			n = write(ConnectFD, result.c_str(), result.size());
 			
 			
