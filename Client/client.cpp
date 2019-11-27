@@ -13,15 +13,56 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <regex>
 using namespace std;
 
 int SocketFD;
 
 const int l = 3;
 std::string IP = "127.0.0.1";
-int PORT = 40005;
+int PORT = 40002;
 
 bool end_connection = false;
+
+string lrtrim(string str) {
+	const std::string nothing = "" ;
+	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
+	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
+	return str ; 
+}
+
+string make_read(int fd){
+	//cout<<"Make read"<<endl;
+	char size[l];
+	read(fd,size,l);
+	int len = atoi(size);
+	
+	//cout<<"TAM"<<len<<endl;
+	char *buffer = new char [len];
+	int n = read(fd,buffer,len);
+	//buffer[n] = '\n';
+	string str(buffer); 
+	
+	
+	str = lrtrim(str);
+	str.resize(len-1);
+	//cout<<"STRING: |"<<str<<"|"<<endl;
+	return str;
+}
+	
+vector<string> separate_string(string s, string delimiter){
+	vector<string> values;
+	uint pos = s.find(delimiter);
+	
+	while (pos < s.size()) {
+		string s1 = s.substr(0, pos);
+		values.push_back(s1);
+		s.erase(0, pos + delimiter.length());
+		pos = s.find(delimiter);
+	}
+	values.push_back(s);
+	return values;
+}
 
 string slice_string(string &s){
 	string delimiter = " ";
@@ -33,7 +74,7 @@ string slice_string(string &s){
 	
 string size_string(string s){
 	int num = s.size();
-	num += l+1;
+	num += 1; // " "
 	string res = to_string(num);
 	
 	if(res.size() == 1)
@@ -41,10 +82,8 @@ string size_string(string s){
 	else if (res.size() ==2){
 		res = '0'+res;
 	}
-	
+
 	return res + ' ' + s;
-	
-	
 }
 
 
@@ -55,18 +94,10 @@ void requesting_access(int SocketFD){
 	write(SocketFD, request.c_str(), request.size());
 	
 	
-	char size[l];
-	read(SocketFD,size,l);
-	int len = atoi(size);
-	//cout<<len<<endl;
 	
-	char *buffer = new char [len];
-	int n = read(SocketFD,buffer,len);
-	
-	
-	string str(buffer);
+	string str = make_read(SocketFD);
 	//cout<<str<<endl;
-	slice_string(str);
+	//slice_string(str);
 	
 	if (str != "OK."){
 		cout<<"Erroneous confirmation. Ending connection"<<endl;
@@ -84,25 +115,11 @@ void closing_connection(){
 	string close = size_string("Closing Connection.");
 	write(SocketFD, close.c_str(), close.size());
 
-	char size[l];
-	read(SocketFD,size,l);
-	int len = atoi(size);
-//	cout<<len<<endl;
-	char *buffer = new char [len];
-	read(SocketFD,buffer,len);
-	
-	string str(buffer); // "OK."
-	slice_string(str);
+	string str = make_read(SocketFD); // "OK."
+
 	if (str == "OK."){
-		
-		char size[l];
-		read(SocketFD,size,l);
-		int len = atoi(size);
-		//cout<<len<<endl;
-		char *buffer1 = new char [len];
-		read(SocketFD,buffer1,len);
-		string str1(buffer1); //Are you sure?
-		slice_string(str1);
+
+		string buffer1 = make_read(SocketFD);
 		if (buffer1 == "Are you sure?"){
 			string msg = size_string("Yes.");
 			write(SocketFD, msg.c_str(), msg.size());
@@ -121,13 +138,14 @@ void send_msg(){
     int n;
 	do{
 		std::cout << "Type your message: ";
-		string input ; 
+		string input = "" ; 
 		std::getline (std::cin,input);  	
 		if (input[0] == '0'){
 			end_connection = true;
 		}
 		
 		input = size_string(input);
+		cout<<"INPUT "<<input<<endl;
 		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
 		
 	} while(!end_connection);
@@ -136,16 +154,19 @@ void send_msg(){
 void rcv_msg(){
 	int n;
 	do{	
-		char size[l];
-		read(SocketFD,size,l);
-		int len = atoi(size);
-		//cout<<len<<endl;
-		char *buffer = new char [len];
-		n = read(SocketFD,buffer,len);
-		
-		if (n < 0) perror("ERROR reading from socket");
-		printf("Server: [%s]\n",buffer);
-		
+		string buffer = make_read(SocketFD);
+		string aux = buffer;
+		string verify_select = slice_string(aux);
+		if(verify_select == "sq"){
+			vector<string> select = separate_string(aux, "/");
+			for(int i=0;i<select.size();++i){
+				cout<<select[i]<<endl;
+			}
+		}
+		else{
+		//if (n < 0) perror("ERROR reading from socket");
+			cout<<"Server: ["<<buffer<<"]"<<endl;
+		}
 	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
 	end_connection = true;
