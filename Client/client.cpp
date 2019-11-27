@@ -16,91 +16,136 @@
 using namespace std;
 
 int SocketFD;
-char buffer[256];
 
+const int l = 3;
 std::string IP = "127.0.0.1";
-int PORT = 40002;
+int PORT = 40005;
 
 bool end_connection = false;
 
-void requesting_access(int SocketFD){
-	write(SocketFD, "Requesting access.", 19);
-	bzero(buffer,256);
-	read(SocketFD,buffer,255);
+string slice_string(string &s){
+	string delimiter = " ";
+	int pos = s.find(delimiter);
+	string s1 = s.substr(0, pos);
+	s.erase(0, pos + delimiter.length());
+	return s1;
+}
 	
-	if (strcmp(buffer, "OK.") != 0){
-		printf("Erroneous confirmation. Ending connection\n");
+string size_string(string s){
+	int num = s.size();
+	num += l+1;
+	string res = to_string(num);
+	
+	if(res.size() == 1)
+		res = "00"+res;	 
+	else if (res.size() ==2){
+		res = '0'+res;
+	}
+	
+	return res + ' ' + s;
+	
+	
+}
+
+
+void requesting_access(int SocketFD){
+	//cout<<"Requesting access"<<endl;
+	string request = size_string("Requesting access.");
+	//cout<<request<<endl;
+	write(SocketFD, request.c_str(), request.size());
+	
+	
+	char size[l];
+	read(SocketFD,size,l);
+	int len = atoi(size);
+	//cout<<len<<endl;
+	
+	char *buffer = new char [len];
+	int n = read(SocketFD,buffer,len);
+	
+	
+	string str(buffer);
+	//cout<<str<<endl;
+	slice_string(str);
+	
+	if (str != "OK."){
+		cout<<"Erroneous confirmation. Ending connection"<<endl;
 		shutdown(SocketFD, SHUT_RDWR);
 		close(SocketFD);
 	} else {
-		 write(SocketFD, "OK.", 3);
-		printf("Connection to database established\n");
+		string msg = size_string("OK.");
+		write(SocketFD, msg.c_str(), msg.size());
+		cout<<"Connection to database established"<<endl;
 	}
 }
 
 void closing_connection(){
 	
-	write(SocketFD, "Closing Connection.", 19+1);
-	bzero(buffer,256);
-	read(SocketFD,buffer,4); //OK
+	string close = size_string("Closing Connection.");
+	write(SocketFD, close.c_str(), close.size());
+
+	char size[l];
+	read(SocketFD,size,l);
+	int len = atoi(size);
+//	cout<<len<<endl;
+	char *buffer = new char [len];
+	read(SocketFD,buffer,len);
 	
-	if (strcmp(buffer, "OK.") == 0){
-		bzero(buffer,256);
-		read(SocketFD, buffer, 13+2); //Are you sure?
-		if (strcmp(buffer, "Are you sure?") == 0){
-			write(SocketFD, "Yes.", 4+1);
+	string str(buffer); // "OK."
+	slice_string(str);
+	if (str == "OK."){
+		
+		char size[l];
+		read(SocketFD,size,l);
+		int len = atoi(size);
+		//cout<<len<<endl;
+		char *buffer1 = new char [len];
+		read(SocketFD,buffer1,len);
+		string str1(buffer1); //Are you sure?
+		slice_string(str1);
+		if (buffer1 == "Are you sure?"){
+			string msg = size_string("Yes.");
+			write(SocketFD, msg.c_str(), msg.size());
 			printf("Ending connection with server. Closing socket.\n");
-		} else {
+		} 
+		else
 			printf("Erroneous confirmation. Server not asking.\n");
-		}
-	} else {
+	} 
+	else {
 		printf("Erroneous confirmation. Server not confirming.\n");
 	}
 	
 }
 
 void send_msg(){
-	char msg[256];
     int n;
 	do{
 		std::cout << "Type your message: ";
 		string input ; 
-		std::getline (std::cin,input);
-		input = "client " + input;
-		
-		strcpy(msg, input.c_str()); 
-		
-		
-		n = write(SocketFD,msg,255); //cuantos bytes estoy mandando
-
-		//n dice cuantos bytes se han mandado
-		msg[n] = '\0';
-		
-		if ((char)msg[0] == '0'){
+		std::getline (std::cin,input);  	
+		if (input[0] == '0'){
 			end_connection = true;
 		}
+		
+		input = size_string(input);
+		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
 		
 	} while(!end_connection);
 }
 
 void rcv_msg(){
-	char buffer[2048];
-	//string buffer;
-    int n;
+	int n;
 	do{	
-		bzero(buffer,2048);
-		/*n = read(SocketFD,buffer,1);
-		if(buffer[0] == 's'){
-			n = read(SocketFD,buffer,6);
-			int resultSize = stoi(buffer);
-			n = read(SocketFD,buffer,resultSize);
-		}*/
-		
-		n = read(SocketFD, buffer, 2048);
+		char size[l];
+		read(SocketFD,size,l);
+		int len = atoi(size);
+		//cout<<len<<endl;
+		char *buffer = new char [len];
+		n = read(SocketFD,buffer,len);
 		
 		if (n < 0) perror("ERROR reading from socket");
-		buffer[n] = '\0';
 		printf("Server: [%s]\n",buffer);
+		
 	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
 	end_connection = true;
@@ -146,8 +191,6 @@ int main(void){
       close(SocketFD);
       exit(EXIT_FAILURE);
     }
-	/*do{
-	}while(strcmp(buffer, "chau") != 0); */
 	
 	requesting_access(SocketFD);
 	
