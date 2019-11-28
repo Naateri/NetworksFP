@@ -13,94 +13,160 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <regex>
 using namespace std;
 
 int SocketFD;
-char buffer[256];
 
+const int l = 3;
 std::string IP = "127.0.0.1";
-int PORT = 40004;
+int PORT = 40002;
 
 bool end_connection = false;
 
-void requesting_access(int SocketFD){
-	write(SocketFD, "Requesting access.", 19);
-	bzero(buffer,256);
-	read(SocketFD,buffer,255);
+string lrtrim(string str) {
+	const std::string nothing = "" ;
+	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
+	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
+	return str ; 
+}
+
+string make_read(int fd){
+	//cout<<"Make read"<<endl;
+	char size[l];
+	read(fd,size,l);
+	int len = atoi(size);
 	
-	if (strcmp(buffer, "OK.") != 0){
-		printf("Erroneous confirmation. Ending connection\n");
+	//cout<<"TAM"<<len<<endl;
+	char *buffer = new char [len];
+	int n = read(fd,buffer,len);
+	//buffer[n] = '\n';
+	string str(buffer); 
+	
+	
+	str = lrtrim(str);
+	str.resize(len-1);
+	//cout<<"STRING: |"<<str<<"|"<<endl;
+	return str;
+}
+	
+vector<string> separate_string(string s, string delimiter){
+	vector<string> values;
+	uint pos = s.find(delimiter);
+	
+	while (pos < s.size()) {
+		string s1 = s.substr(0, pos);
+		values.push_back(s1);
+		s.erase(0, pos + delimiter.length());
+		pos = s.find(delimiter);
+	}
+	values.push_back(s);
+	return values;
+}
+
+string slice_string(string &s){
+	string delimiter = " ";
+	int pos = s.find(delimiter);
+	string s1 = s.substr(0, pos);
+	s.erase(0, pos + delimiter.length());
+	return s1;
+}
+	
+string size_string(string s){
+	int num = s.size();
+	num += 1; // " "
+	string res = to_string(num);
+	
+	if(res.size() == 1)
+		res = "00"+res;	 
+	else if (res.size() ==2){
+		res = '0'+res;
+	}
+
+	return res + ' ' + s;
+}
+
+
+void requesting_access(int SocketFD){
+	//cout<<"Requesting access"<<endl;
+	string request = size_string("Requesting access.");
+	//cout<<request<<endl;
+	write(SocketFD, request.c_str(), request.size());
+	
+	
+	
+	string str = make_read(SocketFD);
+	//cout<<str<<endl;
+	//slice_string(str);
+	
+	if (str != "OK."){
+		cout<<"Erroneous confirmation. Ending connection"<<endl;
 		shutdown(SocketFD, SHUT_RDWR);
 		close(SocketFD);
 	} else {
-		 write(SocketFD, "OK.", 3);
-		printf("Connection to database established\n");
+		string msg = size_string("OK.");
+		write(SocketFD, msg.c_str(), msg.size());
+		cout<<"Connection to database established"<<endl;
 	}
 }
 
 void closing_connection(){
 	
-	write(SocketFD, "Closing Connection.", 19+1);
-	bzero(buffer,256);
-	read(SocketFD,buffer,4); //OK
-	
-	if (strcmp(buffer, "OK.") == 0){
-		bzero(buffer,256);
-		read(SocketFD, buffer, 13+2); //Are you sure?
-		if (strcmp(buffer, "Are you sure?") == 0){
-			write(SocketFD, "Yes.", 4+1);
+	string close = size_string("Closing Connection.");
+	write(SocketFD, close.c_str(), close.size());
+
+	string str = make_read(SocketFD); // "OK."
+
+	if (str == "OK."){
+
+		string buffer1 = make_read(SocketFD);
+		if (buffer1 == "Are you sure?"){
+			string msg = size_string("Yes.");
+			write(SocketFD, msg.c_str(), msg.size());
 			printf("Ending connection with server. Closing socket.\n");
-		} else {
+		} 
+		else
 			printf("Erroneous confirmation. Server not asking.\n");
-		}
-	} else {
+	} 
+	else {
 		printf("Erroneous confirmation. Server not confirming.\n");
 	}
 	
 }
 
 void send_msg(){
-	char msg[256];
     int n;
 	do{
 		std::cout << "Type your message: ";
-		string input ; 
-		std::getline (std::cin,input);
-		input = "client " + input;
-		
-		strcpy(msg, input.c_str()); 
-		
-		
-		n = write(SocketFD,msg,255); //cuantos bytes estoy mandando
-
-		//n dice cuantos bytes se han mandado
-		msg[n] = '\0';
-		
-		if ((char)msg[0] == '0'){
+		string input = "" ; 
+		std::getline (std::cin,input);  	
+		if (input[0] == '0'){
 			end_connection = true;
 		}
+		
+		input = size_string(input);
+		cout<<"INPUT "<<input<<endl;
+		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
 		
 	} while(!end_connection);
 }
 
 void rcv_msg(){
-	char buffer[2048];
-	//string buffer;
-    int n;
+	int n;
 	do{	
-		bzero(buffer,2048);
-		/*n = read(SocketFD,buffer,1);
-		if(buffer[0] == 's'){
-			n = read(SocketFD,buffer,6);
-			int resultSize = stoi(buffer);
-			n = read(SocketFD,buffer,resultSize);
-		}*/
-		
-		n = read(SocketFD, buffer, 2048);
-		
-		if (n < 0) perror("ERROR reading from socket");
-		buffer[n] = '\0';
-		printf("Server: [%s]\n",buffer);
+		string buffer = make_read(SocketFD);
+		string aux = buffer;
+		string verify_select = slice_string(aux);
+		if(verify_select == "sq"){
+			vector<string> select = separate_string(aux, "/");
+			for(int i=0;i<select.size();++i){
+				cout<<select[i]<<endl;
+			}
+		}
+		else{
+		//if (n < 0) perror("ERROR reading from socket");
+			cout<<"Server: ["<<buffer<<"]"<<endl;
+		}
 	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
 	end_connection = true;
@@ -146,8 +212,6 @@ int main(void){
       close(SocketFD);
       exit(EXIT_FAILURE);
     }
-	/*do{
-	}while(strcmp(buffer, "chau") != 0); */
 	
 	requesting_access(SocketFD);
 	

@@ -18,19 +18,40 @@
 #include <algorithm>
 #include <regex>
 
-#define MAX_SLAVES 5
+#define MAX_SLAVES 1
 #define uint unsigned int
 
 using namespace std;
 
 int SocketFD;
-char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40004;
+int PORT = 40002;
 
 bool end_connection = false;
+const int l = 3;
 
+string lrtrim(string str) {
+	const std::string nothing = "" ;
+	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
+	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
+	return str ; 
+}
+
+string size_string(string s){
+	int num = s.size();
+	num += 1; // " "
+	string res = to_string(num);
+	
+	if(res.size() == 1)
+		res = "00"+res;	 
+	else if (res.size() ==2){
+		res = '0'+res;
+	}
+	
+	return res + ' ' + s;
+}
+	
 /*void requesting_access(int SocketFD, string identificador){
 	string request="Slave requesting access "+identificador;
 	int n = write(SocketFD, "Slave requesting access", 26);
@@ -57,6 +78,26 @@ string slice_string(string &s){
 	s.erase(0, pos + delimiter.length());
 	return s1;
 }
+
+string make_read(int fd){
+	//cout<<"Make read"<<endl;
+	char size[l];
+	read(fd,size,l);
+	int len = atoi(size);
+	
+	//cout<<"TAM"<<len<<endl;
+	char *buffer = new char [len];
+	int n = read(fd,buffer,len);
+	//buffer[n] = '\n';
+	string str(buffer); 
+	
+	
+	str = lrtrim(str);
+	str.resize(len-1);
+//	cout<<"STRING: |"<<str<<"|"<<endl;
+	return str;
+}
+	
 	
 vector<string> separate_string(string s, string delimiter){
 	vector<string> values;
@@ -102,12 +143,7 @@ int hash_function(std::string value){
 	return cur_sum % MAX_SLAVES + 1;
 }
 	
-string lrtrim(string str) {
-	const std::string nothing = "" ;
-	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
-	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
-	return str ; 
-}
+
 
 int get_id(){
 	ifstream fs;
@@ -131,10 +167,10 @@ int get_id(){
 
 string insert_node(string s){
 	
-	std::string return_to_server = "slave Node was inserted"; //result to be sent to client
+	std::string return_to_server = "Node was inserted"; //result to be sent to client
 	string node_id = slice_string(s);
-	//cout<<"NODE ID: " <<node_id<<endl;
-	//cout<<"RESTO: "<<s<<endl;
+	cout<<"NODE ID: " <<node_id<<endl;
+	cout<<"RESTO: "<<s<<endl;
 	vector<string> attr;
 	
 	if(s.size()>5){/// 2 minimo {a:c}
@@ -241,7 +277,7 @@ string insert_adjacency(string s){
 		insert_node(toInsert);
 	}
 	
-	return "slave Adjacency was inserted";
+	return "Adjacency was inserted";
 }
 	
 string all_adjacencies(string msg){
@@ -267,24 +303,28 @@ string all_adjacencies(string msg){
 			if(line == "\0"){
 				break;
 			}
+
+			string aux = line.substr(0, node_id.size()); 
+			if(aux == node_id){
+				int tam = node_id.size(); 
+				txt.push_back(line.substr(tam+3, line.size()-tam-3));
+			}
 			
-			size_t found = line.find(node_id);
-			if (found != string::npos) 
-				txt.push_back(line);
+			
 			
 		}
 		myfile.close();
 		
 	}
+	string all_adjacencies = "delete";
 	
 	for(int i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
+		all_adjacencies += " " + txt[i];
 	}
 	
-	/// Utilizar un set
-	///Falta terminar	
 	
-	return "slave hola" ;
+	
+	return all_adjacencies ;
 	
 }
 	
@@ -327,79 +367,154 @@ string delete_adjacency(string s){
 	outfile.seekp(0);
 	
 	for(uint i=0;i<txt.size();++i){
-		//cout<<txt[i]<<endl;
+		cout<<txt[i]<<endl;
 		outfile <<txt[i]<<endl;
 	}
 	
 	outfile.close();
 	
-	return "slave Adjacency was deleted";
+	return "Adjacency was deleted";
 }
+	
+void delete_node(string node){
+	
+	std::size_t found = node.find('\0');
+	
+	node = node.substr(0,found);
+	
+	delSpaces(node);
+	
+	std::fstream myfile, outfile;
+	
+	//string slave_txt = "slave_" + to_string(num_file)+ ".txt";
+	
+	string slave_txt = "slave.txt";
+	
+	//cout<<slave_txt<<endl;
+	myfile.open(slave_txt, ios::in);
+	
+	string line;
+	
+	vector<string> txt;
+	bool begin = false;
+	bool end = false;
+	if (myfile.is_open()){
+		while ( getline (myfile,line) && !myfile.eof()){
+			//delSpaces(line);
+			cout<<"Leyendo: |"<<line<<"|"<<endl;
+			
+			if(line == node){
+				begin = true;
+			}
+			else if(begin==true){
+				;
+			}
+			else if(begin == true && line == "" ){
+				end = true;
+			}
+			else if(begin==true && end == true){
+				txt.push_back(line);
+			}
+			else
+			   txt.push_back(line);
+			
+			
+		}
+		myfile.close();
+	}
+	/*
+	outfile.open(slave_txt, ios::out );
+	outfile.clear();
+	outfile.seekp(0);
+	
+	for(uint i=0;i<txt.size();++i){
+		cout<<txt[i]<<endl;
+		outfile <<txt[i]<<endl;
+	}
+	
+	outfile.close();
+	*/
+	
+}
+	
 
 std::string select(std::string msg){
-	cout<<"Select"<<endl;
+	
+	//// string msg_slave = "server 2 " + node_id + ' ' + to_string(lvl) + ' ' +to_string(CId);
+	//cout<<"MENSAJE: "<<msg<<endl;
+	
 	std::fstream file;
 	string slave_txt = "slave.txt";
 	file.open(slave_txt, ios::in);
 	string line;
 	string tempRes;
 	vector<string> separate = separate_string(msg, " ");
-	vector<string> nodes;
-	nodes.push_back(separate[separate.size()-2]);
+	string CID = separate[2];
+	
+	
+	
 	bool attributes = 0;
 	bool findAttibutes = 0;
 	bool once = 1;
-		
-	cout<<"Select information"<<endl;
-	cout<<separate[separate.size()-1]<<endl;
-	string CIDLenght = separate[separate.size()-1].substr(2,6);
-	string CID = separate[separate.size()-1].substr(8,stoi(CIDLenght));
-	cout<<"CID"<<CID<<endl;
-	string tempLevelString(1,separate[separate.size()-1][1]);
-	if(stoi(tempLevelString) == 1){
+	bool put_in_msg = false;
+	
+	
+	if(separate[1] == "1"){
 		while ( getline (file,line) && !file.eof()){
 			
 			if(line == "" && once){
 				
-				tempRes+= "Attributes: ";
+				tempRes+= "Attributes: / ";
 				attributes = 1;
 				once = 0;
 			}
+			
 			if(!attributes){
-				if(separate[separate.size()-1][0] == line[0]){
-					tempRes+= line + " == ";
-					vector<string> temp = separate_string(line, " ");
-					nodes.push_back(temp[temp.size()-1]);
+				vector<string> n = separate_string(line, " ");
+				if(separate[0] == n[0]){ /// adjacencies
+					//tempRes+= line + " == ";
+					tempRes += line + " / ";
+					//vector<string> temp = separate_string(line, " ");
+					//nodes.push_back(temp[temp.size()-1]);
 				}
-			}else{
-				for(uint i = 0;i<nodes.size();++i){
-					if(nodes[i][0] == line[0] && line != ""){
-						findAttibutes = 1;
-						break;
-					}
+			}
+			else{
+				if(line == separate[0]){
+					put_in_msg = true; 
+					continue;
 				}
-				if(findAttibutes){
-					tempRes+=line+" == ";
-					findAttibutes =0;
+				if(put_in_msg && line == ""){
+					break;
+				}
+				if(put_in_msg ){
+					tempRes += line + "/ ";
 				}
 			}
 			
 		}
-		string lengthString = to_string(tempRes.size());
-		while(lengthString.size()<6){
+	
+		tempRes.resize(tempRes.size()-2);
+	
+		//string lengthString = to_string(tempRes.size());
+	/*	while(lengthString.size()<6){
 			lengthString = "0"+lengthString;
 		}
-		tempRes =  "s"+CIDLenght+CID+lengthString+tempRes+'\0';
+		*/
+		tempRes =  "s "+CID+" "+tempRes;
 		cout<<"TempRes: "<<tempRes<<endl;
 		file.close();
 		
 	}
 	//cout<<"res 1 "<<tempRes<<endl;
+	tempRes = size_string(tempRes);
 	return tempRes;
+	
+	
 }
-
-std::string parse_message(string msg){
-	string res;
+		
+	
+void parse_message(string msg){
+	string result;
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
@@ -407,81 +522,93 @@ std::string parse_message(string msg){
 	
 	if(type_query == "0"){
 		cout<<"Inserting node"<<endl;
-		res = insert_node(msg);
+		result = insert_node(msg);
+		result = size_string(result);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "1"){
 		cout<<"Inserting adjacency"<<endl;
-		res = insert_adjacency(msg);
+		result = insert_adjacency(msg);
+		result = size_string(result);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "2"){
-		res = select(msg);
+		cout<<"Select"<<endl;
+		result = select(msg);
+		result = size_string(result);
+		write(SocketFD, result.c_str(), result.size());
 	} 
 	else if(type_query == "3"){
 		cout<<"Delete node"<<endl;
-		//res = delete_node(msg);
+		
+		delete_node(msg);
 	} 
 	else if(type_query == "adj"){
 		cout<<"Requesting all adjacencies of a node"<<endl;
-		res = all_adjacencies(msg);
+		result = all_adjacencies(msg);
+		result = size_string(result);
+		write(SocketFD, result.c_str(), result.size());
 	}
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
-		res = delete_adjacency(msg);
+		delete_adjacency(msg);
+		
 	} 
 	else {
-		res = "Error. Query not understood\n";
+		result = "Error. Query not understood\n";
+		result = size_string(result);
+		write(SocketFD, result.c_str(), result.size());
 	}
-	cout<<"Res: "<<res<<endl;
-	return res;
 	
 }
 
 void requesting_access(int SocketFD, string identificador){ //new requesting access
 	string request="Slave requesting access "+identificador;
-	write(SocketFD, "Slave requesting access", 23+1);
+	request = size_string(request);
+	write(SocketFD, request.c_str(), request.size());
 	
 	sleep(1);
-	
+	identificador = size_string(identificador);
 	write(SocketFD, identificador.c_str(), identificador.size());
 	
-	read(SocketFD,buffer,255);
+	string response = make_read(SocketFD);
 	
-	if (strcmp(buffer, "OK.") != 0){
+	if (response != "OK."){
 		printf("Erroneous confirmation. Ending connection\n");
 		shutdown(SocketFD, SHUT_RDWR);
 		close(SocketFD);
 	} else {
-		write(SocketFD, "OK.", 3);
+		string msg_ok = size_string("OK.");
+		write(SocketFD, msg_ok.c_str(), msg_ok.size());
 		printf("Connection to database as a slave established.\n");
 	}
 }
 	
 void send_msg(){
-	char msg[256];
 	int n;
 	do{
-		bzero(msg,256);
 		std::cout << "Type your message: ";
-		std::cin.getline(msg, 255);
-		n = write(SocketFD,msg,255); //cuantos bytes estoy mandando
+		string input ; 
+		std::getline (std::cin,input);  	
+		if (input[0] == '0'){
+			end_connection = true;
+		}
 		
-		//n dice cuantos bytes se han mandado
-		msg[n] = '\0';
+		input = size_string(input);
+		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
+		
 	} while(!end_connection);
 }
+
+	
 		
 void rcv_msg(){
-	char buffer[256];
+	
 	int n;
 	do{	
-		bzero(buffer,256);
-		n = read(SocketFD,buffer,255);
+		string temp = make_read(SocketFD);
 		
-		std::string temp(buffer, 256);
-		cout<<"temp: "<<temp<<endl;
-		std::size_t found = temp.find('\0');
-	
-		temp = temp.substr(0,found);
+		
 	
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
@@ -489,16 +616,17 @@ void rcv_msg(){
 		if (temp.substr(0, 6) == "server"){
 			
 			slice_string(temp);
-			result = parse_message(temp);
-			cout<<"Resultado Select: "<<result<<endl;
-			n = write(SocketFD, result.c_str(), result.size());
+			cout<<"Mensaje de server"<<endl;
+			cout<<temp<<endl;
+			parse_message(temp);
+			
 			
 
 		}
 		
 		
 
-		printf("Server: [%s]\n",buffer);
+		cout<<"Server: [" << temp <<"]"<<endl;
 	} while(!end_connection);
 	
 	end_connection = true;
