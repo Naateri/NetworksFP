@@ -1,6 +1,6 @@
 /* Client code in C++ */
 
-//g++ client.cpp -o client -std=c++11 -lpthread
+//g++ -std=c++0x -o slave.exe slave.cpp
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -433,8 +433,9 @@ void delete_node(string node){
 }
 
 void keepalive(){
-	string respuesta="OK";
+	string respuesta="008 1024";
 	write(SocketFD, respuesta.c_str(), respuesta.size());
+	cout<<"envía"<<endl;
 }
 	
 void parse_message(string msg){
@@ -442,6 +443,7 @@ void parse_message(string msg){
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
+	
 	
 	
 	if(type_query == "0"){
@@ -477,7 +479,7 @@ void parse_message(string msg){
 		delete_adjacency(msg);
 		
 	} 
-	else if(type_query == "5"){
+	else if(type_query[0] == '5'){
 		cout<<"Keep alive"<<endl;
 		keepalive();
 		
@@ -508,8 +510,9 @@ void requesting_access(int SocketFD, string identificador){ //new requesting acc
 	} else {
 		string msg_ok = size_string("OK.");
 		write(SocketFD, msg_ok.c_str(), msg_ok.size());
-		printf("Connection to database as a slave established.\n");
+		
 	}
+	printf("Connection to database as a slave established.\n");
 }
 	
 void send_msg(){
@@ -536,7 +539,7 @@ void rcv_msg(){
 	do{	
 		string temp = make_read(SocketFD);
 		
-		
+		//cout<<temp<<endl;
 	
 		string result;
 		if (n < 0) perror("ERROR reading from socket");

@@ -17,7 +17,8 @@
 #include <fstream>
 #include <map>
 #include <regex>
-#include <poll.h>
+#include <fcntl.h>
+#include <sys/select.h>
 
 #define MAX_SLAVES 1
 #define uint unsigned int 
@@ -41,8 +42,9 @@ int PORT = 40005;
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
 ///
+vector<int> respuestas;
 
-
+bool primer_slave=true;
 
 
 string size_string(string s){
@@ -566,6 +568,7 @@ std::string parse_message_client(string str_msg){
 	else if(query == "delete"){
 		return delete_query(str_msg);
 	}
+	
 	else {
 		return "Error. Query not understood\n";
 	}
@@ -574,7 +577,10 @@ std::string parse_message_client(string str_msg){
 void keepalive(){
 	int n;
 	int ret;
-	pollfd fd;
+	fd_set rfds;
+	timeval tv;
+	tv.tv_sec = 8;
+    tv.tv_usec = 0;
 	bool end_connection = false;
 	do{
 		bool arr[slaves.size()];
@@ -585,28 +591,46 @@ void keepalive(){
 		map<int, int>::iterator temp;
 		int o=0;
 		for(it=slaves.begin();it != slaves.end();it++){
-			string result= "server 5 ";
+			int retval=0;
+			string result= "012 server 5";
 			write(it->second, result.c_str(), result.size());
-			fd.fd = it->second;
+			//cout<<"Ok"<<endl;
+			sleep(1);
+			
+			//retval = select(slaves.size(), &rfds, NULL, NULL, &tv);
 	
-			ret = poll(&fd, 2, 1000);
-			string temp = make_read(it->second);
-			if(temp == "OK"){
-				arr[o]=true;
+			/*if(retval == 0){
+				printf("timeout"); /* a timeout occured 
+			}
+			else{
+				read(it->second, temp, 2);
+				cout<<"pe"<<temp<<"pe"<<endl;
+				if(temp == "OK"){
+					arr[o]=true;
+					cout<<"Ok"<<endl;
+				}
 			}
 			o++;
+			*/
 		}
-		
-		it=slaves.begin();
-		for(int i=0;i < slaves.size();i++){
-			if(!arr[i]){
-				temp=it;
+		sleep(1);
+		cout<<"slaves activos "<<slaves.size()<<endl;
+		for(it=slaves.begin();it != slaves.end();it++){
+			bool borrar=true;
+			for(int i=0;i < respuestas.size();i++){
+				if(it->second==respuestas[i]){
+					borrar=false;
+					cout<<respuestas[i]<<" "<<it->second<<endl;
+				}
+			}
+			if(borrar==true){
 				shutdown(temp->second, SHUT_RDWR);
 				close(temp->second);	
-				slaves.erase (temp->first); 
+				cout<<"eliminado"<<it->second<<endl;
+				slaves.erase(temp->first);
 			}
-			it++;
 		}
+		respuestas.clear();
 		sleep(10);
 	} while(!end_connection);
 }
@@ -635,6 +659,10 @@ void rcv_msg(int ConnectFD, bool slave){
 				algo = size_string(algo);
 				write(ConnectFD, algo.c_str(),algo.size());
 			}
+			else if(temp=="1024"){
+				cout<<"entro "<<ConnectFD<<endl;
+				respuestas.push_back(ConnectFD);
+			}
 			else
 			cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
 			
@@ -656,7 +684,7 @@ void rcv_msg(int ConnectFD, bool slave){
 			result = parse_message_client(temp);
 			result = size_string(result);
 			n = write(ConnectFD, result.c_str(), result.size());
-			
+	
 			
 			
 		} else {
@@ -728,6 +756,11 @@ int main(void) {
 		} else if (connection == 1) { //slave
 			std::thread t1(rcv_msg, ConnectFD, true); //slave
 			t1.detach();
+			if(primer_slave==true){
+				std::thread t2(keepalive);
+				t2.detach();
+				primer_slave=false;
+			}
 		} else { //error
 			shutdown(ConnectFD, SHUT_RDWR);
 			close(ConnectFD);
