@@ -161,6 +161,8 @@ int get_id(){
 		
 		//FALTA CONSIDERAR ESPACIOS
 		
+		delSpaces(value);
+		
 		return hash_function(value);
 	} else return 0;
 }
@@ -309,9 +311,6 @@ string all_adjacencies(string msg){
 				int tam = node_id.size(); 
 				txt.push_back(line.substr(tam+3, line.size()-tam-3));
 			}
-			
-			
-			
 		}
 		myfile.close();
 		
@@ -331,19 +330,14 @@ string all_adjacencies(string msg){
 string delete_adjacency(string s){
 	vector<string> nodes = separate_string(s , " ");
 	
-	
 	string rel =nodes[0] +" - "+nodes[1];
 	
 	int num_file = hash_function(nodes[0]);
 	
-	
-	
 	std::fstream myfile, outfile;
-	
 	//string slave_txt = "slave_" + to_string(num_file)+ ".txt";
 	
 	string slave_txt = "slave.txt";
-	
 	//cout<<slave_txt<<endl;
 	myfile.open(slave_txt, ios::in);
 	
@@ -422,21 +416,19 @@ void delete_node(string node){
 		}
 		myfile.close();
 	}
-	/*
+	
 	outfile.open(slave_txt, ios::out );
 	outfile.clear();
 	outfile.seekp(0);
 	
 	for(uint i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
+		//cout<<txt[i]<<endl;
 		outfile <<txt[i]<<endl;
 	}
 	
 	outfile.close();
-	*/
-	
 }
-	
+
 
 std::string select(std::string msg){
 	
@@ -508,7 +500,96 @@ std::string select(std::string msg){
 	//cout<<"res 1 "<<tempRes<<endl;
 	tempRes = size_string(tempRes);
 	return tempRes;
+}
+
+void update_node(string node){ //UPDATE <NODE> ATTR atrribute:value
 	
+	/*std::size_t found = node.find(' ');
+	
+	node = node.substr(0,found);*/
+	
+	string attribute, value;
+	string real_node = slice_string(node);
+	
+	cout << "real_node: " << real_node << endl;
+	
+	slice_string(node); //Attr
+	
+	cout << "node: " << node << endl; //ATTR
+	
+	attribute = slice_string(node);
+	vector<string> attributes = separate_string(attribute, ":");
+	attribute = attributes[0]; value = attributes[1];
+	
+	cout << "attribute " << attribute << ", value " << value << endl;
+	
+	delSpaces(real_node);
+	delSpaces(attribute); delSpaces(value);
+	
+	std::fstream myfile, outfile;
+	
+	string slave_txt = "slave.txt";
+	
+	myfile.open(slave_txt, ios::in);
+	
+	string line, temp;
+	
+	vector<string> txt;
+	bool begin = false;
+	bool end = false;
+	bool updated = false;
+	bool found_node = false;
+	if (myfile.is_open()){
+		while ( getline (myfile,line) && !myfile.eof()){
+			//delSpaces(line);
+			cout<<"Leyendo: |"<<line<<"|"<<endl;
+			
+			if(line == real_node){
+				begin = true;
+				found_node = true;
+				txt.push_back(line);
+			}
+			else if(begin==true){
+				cout << "line.substr " << line.substr(0, attribute.size()) << endl;
+				if (line.substr(0, attribute.size()) == attribute){
+					temp = attribute + " : " + value;
+					txt.push_back(temp);
+					updated = true;
+				} else txt.push_back(line);
+			}
+			else if(begin == true && line == "" ){
+				if (updated == true){
+					txt.push_back(line);
+				} else {
+					temp = attribute + " : " + value;
+					txt.push_back(temp);
+				}
+				end = true;
+			}
+			else if(begin==true && end == true){
+				txt.push_back(line);
+			}
+			else
+				txt.push_back(line);			
+		}
+		myfile.close();
+	}
+	
+	if (updated == false && found_node == true){
+		temp = attribute + " : " + value;
+		txt.push_back(temp);
+	}
+	
+	outfile.open(slave_txt, ios::out );
+	outfile.clear();
+	outfile.seekp(0);
+	
+	for(uint i=0;i<txt.size();++i){
+		cout<<txt[i]<<endl;
+		outfile <<txt[i]<<endl;
+	}
+	
+	outfile.close();
 	
 }
 		
@@ -552,8 +633,10 @@ void parse_message(string msg){
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
 		delete_adjacency(msg);
-		
-	} 
+	} else if (type_query == "9"){
+		cout << "Update attribute"<< endl;
+		update_node(msg);
+	}
 	else {
 		result = "Error. Query not understood\n";
 		result = size_string(result);

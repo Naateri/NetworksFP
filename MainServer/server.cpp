@@ -548,8 +548,95 @@ std::string delete_query(string msg){
 	
 	}
 }
-	
 
+string update_node(string nodes){
+	std::size_t found = nodes.find('\0');
+	nodes = nodes.substr(0,found);
+	
+	vector<string> nodos = separate_string(nodes," ");
+	for(int i=0;i<nodos.size();++i){
+		delSpaces(nodos[i]);
+	}
+	
+	string node_id = nodos[0];
+	
+	//cout<<"NODOS :"<<endl;
+	bool connection_to_all = true; 
+	for(int i=1;i<nodos.size();++i){
+		//cout<<"|"<<nodos[i]<<"|"<<endl;
+		connection_to_all &= verify_connection(nodos[i]);
+		//cout<<"Conexion: "<<connection_to_all <<endl;
+		if(connection_to_all == false){
+			return  "Unconnected slave. Please try again later.";
+		}
+	}
+	
+	cout<<"Mandado nodo a borrar "<<endl;
+	int ahash = hash_function(node_id);
+	string node1 = "server 3 " + node_id;
+	node1 = size_string(node1);
+	write(ahash, node1.c_str(),node1.size());
+	cout<<"---------"<<endl;
+	
+	
+	string num_query = "server 4 ";
+	string msg_slave1,msg_slave2; 
+	int i;
+	for(i=1;i<nodos.size();++i){
+		int hash1 = hash_function(node_id);
+		//cout<<"- "<<node_id << " - " << nodos[i]<< " deleted\n";
+		msg_slave1 = "";
+		msg_slave1 = num_query + node_id + " " + nodos[i];
+		cout<<"+ "<<msg_slave1<<"|"<<msg_slave1.size()<<"|"<<endl;
+		msg_slave1 = size_string(msg_slave1);
+		write(slaves[hash1], msg_slave1.c_str(), msg_slave1.size());
+		sleep(1);
+	}
+	
+	for(i=1;i<nodos.size();++i){	
+		msg_slave2 = "";
+		int hash2 = hash_function(nodos[i]);
+		string msg_slave2 = num_query + nodos[i] + " " + node_id;
+		cout<<"+ "<<msg_slave2<<"|"<<msg_slave2.size()<<"|"<<endl;
+		msg_slave2 = size_string(msg_slave2);
+		write(slaves[hash2], msg_slave2.c_str(), msg_slave2.size());
+		sleep(1);
+		
+	}	
+	
+	return "Node deleted";
+}
+
+
+std::string update_query(string msg){ //UPDATE <NODE> ATTR atrribute:value
+	std::string return_to_client; //result to be sent to client
+	string num_query; 
+	//cout<<msg<<endl;
+	
+	vector<string> temp = separate_string(msg, " ");
+	string node_name = temp[0];
+	
+	cout << "Node to be eval: " << node_name << endl;
+	
+	delSpaces(node_name);
+	int hash = hash_function(node_name);
+	bool connection_slave = false;
+	
+	std::map<int,int>::iterator it;
+	it = slaves.find(hash);
+	if (it != slaves.end()){ 
+		connection_slave = true;
+		cout<<"Verifying the connection with the slave"<<endl;
+		num_query = "server 9 ";
+		string msg_slave = num_query + msg ;
+		msg_slave = size_string(msg_slave);
+		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
+		
+		return "UPDATE - Verifying the connection with the slave.";
+	}
+	else return "Unconnected slave. Please try again later.";
+}
+	
 std::string parse_message_client(string str_msg,int CId){
 	
 	int level;
@@ -586,6 +673,8 @@ std::string parse_message_client(string str_msg,int CId){
 	} 
 	else if(query == "delete"){
 		return delete_query(str_msg);
+	} else if (query == "update"){
+		return update_query(str_msg);
 	}
 	else {
 		return "Error. Query not understood\n";
