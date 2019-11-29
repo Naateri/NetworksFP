@@ -18,7 +18,7 @@
 #include <algorithm>
 #include <regex>
 
-#define MAX_SLAVES 2
+#define MAX_SLAVES 3
 #define uint unsigned int
 
 using namespace std;
@@ -464,7 +464,7 @@ std::string select(std::string msg){
 			
 			if(line == "" && once){
 				
-				tempRes+= "|/Attributes: / ";
+				tempRes+= "Attributes: / ";
 				attributes = 1;
 				once = 0;
 			}
