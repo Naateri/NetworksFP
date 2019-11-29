@@ -24,10 +24,13 @@
 using namespace std;
 
 int SocketFD;
+int SocketFD1;
 char buffer[256];
+int ConnectFD;
 
 std::string IP = "127.0.0.1";
 int PORT = 40005;
+int PORTSLAVE = 50007;
 
 bool end_connection = false;
 const int l = 3;
@@ -139,6 +142,25 @@ string lrtrim(string str) {
 	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
 	return str ; 
 }
+
+string backup()
+{
+	std::fstream file;
+	string slave_txt = "slave.txt";
+	file.open(slave_txt, ios::in);
+	string line;
+	string tempRes;
+	while ( getline (file,line) && !file.eof()){
+		tempRes += line + " / ";
+	}
+	tempRes.resize(tempRes.size()-2);
+	
+	file.close();
+	tempRes="backup "+tempRes;
+	tempRes = size_string(tempRes);
+	return tempRes;
+}
+	
 
 int get_id(){
 	ifstream fs;
@@ -451,33 +473,41 @@ void parse_message(string msg){
 		result = insert_node(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
+		string backup=backup();
+		write(SocketFD, backup.c_str(), backup.size());
+	
 	}
 	else if(type_query == "1"){
 		cout<<"Inserting adjacency"<<endl;
 		result = insert_adjacency(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
+		string backup=backup();
+		write(SocketFD, backup.c_str(), backup.size());
 	}
 	else if(type_query == "2"){
 		cout<<"Select"<<endl;
-		
-		//res = select(msg);
+		res = select(msg);
 	} 
 	else if(type_query == "3"){
 		cout<<"Delete node"<<endl;
-		
 		delete_node(msg);
+		string backup=backup();
+		write(SocketFD, backup.c_str(), backup.size());
 	} 
 	else if(type_query == "adj"){
 		cout<<"Requesting all adjacencies of a node"<<endl;
 		result = all_adjacencies(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
+		string backup=backup();
+		write(SocketFD, backup.c_str(), backup.size());
 	}
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
 		delete_adjacency(msg);
-		
+		string backup=backup();
+		write(SocketFD, backup.c_str(), backup.size());
 	} 
 	else if(type_query[0] == '5'){
 		cout<<"Keep alive"<<endl;
@@ -551,10 +581,13 @@ void rcv_msg(){
 			cout<<temp<<endl;
 			parse_message(temp);
 			
-			
-
 		}
-		
+		if (temp.substr(0, 6) == "backup"){
+			cout<<"Mensaje de backup"<<endl;
+			string id = to_string(get_id());
+			id = size_string(id);
+			write(SocketFD, id.c_str(), id.size());
+		}
 		
 
 		printf("Server: [%s]\n",buffer);
@@ -562,9 +595,13 @@ void rcv_msg(){
 	
 	end_connection = true;
 }
+
+
+
 			
 int main(void){
 	cout << "SLAVE"<<endl;
+	
 	struct sockaddr_in stSockAddr;
 	int Res;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -602,8 +639,6 @@ int main(void){
 		close(SocketFD);
 		exit(EXIT_FAILURE);
 	}
-	/*do{
-	}while(strcmp(buffer, "chau") != 0); */
 	
 	string id = to_string(get_id());
 	
@@ -614,10 +649,13 @@ int main(void){
 	
 	//t1.join();
 	t2.join();
+	
+	
 	shutdown(SocketFD, SHUT_RDWR);
 	
 	close(SocketFD);
 	
+	
+	
 	return 0;
 }
-	
