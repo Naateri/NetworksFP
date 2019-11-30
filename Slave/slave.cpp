@@ -841,6 +841,13 @@ int main(void){
 	cout << "SLAVE"<<endl;
 	signal(SIGINT,sighandler);
 	struct sockaddr_in stSockAddr;
+	
+	cout << "IP: ";
+	cin >> IP;
+	
+	cout << "Puerto: ";
+	cin >> PORT;
+	
 	int Res;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	

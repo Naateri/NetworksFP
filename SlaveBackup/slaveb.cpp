@@ -314,6 +314,12 @@ int main(void){
 	//----------------------------
 	//Conexion con el servidor mandando el mismo identificador que el slave del que es backup
 	
+	cout << "IP: ";
+	cin >> IP;
+	
+	cout << "Puerto: ";
+	cin >> PORT;
+	
 	struct sockaddr_in stSockAddr;
 	int Res;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

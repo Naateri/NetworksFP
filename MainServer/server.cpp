@@ -914,6 +914,10 @@ void rcv_msg(int ConnectFD, bool slave){
 				
 int main(void) {
 	cout<<"SERVER"<<endl;
+	
+	cout << "Puerto: ";
+	cin >> PORT;
+	
 	struct sockaddr_in stSockAddr;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	

@@ -19,7 +19,7 @@ using namespace std;
 int SocketFD;
 
 const int l = 3;
-std::string IP = "127.0.0.1";
+std::string IP = "192.168.160.146";
 int PORT = 40000;
 
 bool end_connection = false;
@@ -167,6 +167,13 @@ void rcv_msg(){
 int main(void){
 	cout<<"CLIENT"<<endl;
     struct sockaddr_in stSockAddr;
+	
+	cout << "IP: ";
+	cin >> IP;
+	
+	cout << "Puerto: ";
+	cin >> PORT;
+	
     int Res;
     SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
    
