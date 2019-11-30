@@ -370,7 +370,7 @@ std::string select_node(string msg, int lvl,int CId){
 		cout <<"Encontro slave"<<endl;
 		
 		char buffer2[2048];
-		bzero(buffer2,2048);
+		
 		string resTemp;
 		
 		
@@ -394,7 +394,7 @@ std::string select_node(string msg, int lvl,int CId){
 			cout <<"Encontro slave backup"<<endl;
 		
 			char buffer2[2048];
-			bzero(buffer2,2048);
+			
 			string resTemp;
 			
 			
@@ -762,11 +762,12 @@ void rcv_msg(int ConnectFD, bool slave){
 				map<int, int>::iterator it;
 				for(it=slaves.begin();it != slaves.end();it++){
 					if(it->second==ConnectFD){
-						write(slave_backup[it->first], result.c_str(), result.size());
+						write(slaves_backups[it->first], result.c_str(), result.size());
 						break;
 					}
 				}	
 			}
+			
 			else
 			cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
 			
@@ -780,6 +781,7 @@ void rcv_msg(int ConnectFD, bool slave){
 		}
 		
 		else if (temp == "Closing Connection."){
+			cout<<aqui<<endl;
 			end_connection = closing_connection(ConnectFD); //client ending connection
 		}
 		else if (!slave) {
@@ -876,7 +878,7 @@ int main(void) {
 			close(ConnectFD);
 		}
 	}
-	
+	shutdown(ConnectFD, SHUT_RDWR);
 	close(SocketFD);
 	return 0;
 }
