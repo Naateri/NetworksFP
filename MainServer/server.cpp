@@ -771,9 +771,11 @@ void rcv_msg(int ConnectFD, bool slave){
 		sleep(1);
 		string temp = make_read(ConnectFD);
 
-		if (slave){ //slave			
+		if (slave){ //slave
+			string prev_temp = temp;
+			cout << "Temp antes slice: " << temp << endl;
 			slice_string(temp);
-			cout << "Temp: " << temp << endl;
+			
 			if(temp.substr(0,1)=="s"){
 				cout<<"Temp: ";
 				cout<< temp<<endl;
@@ -858,8 +860,8 @@ void rcv_msg(int ConnectFD, bool slave){
 			} else if(temp == "1024"){
 				cout<<"entro "<<ConnectFD<<endl;
 				respuestas.push_back(ConnectFD);
-			} else if(temp.substr(1,6)=="backup"){
-				string id_str = temp.substr(0,1);
+			} else if(prev_temp.substr(1,6)=="backup"){
+				string id_str = prev_temp.substr(0,1);
 				int id_int = stoi(id_str);
 				//size_string(temp);
 				map<int, int>::iterator it;
@@ -867,11 +869,14 @@ void rcv_msg(int ConnectFD, bool slave){
 					if(it->first==id_int){
 						/*result = temp.substr(6, temp.size() - 6);
 						result = size_string(result);*/
-						result = size_string(temp);
+						result = size_string(prev_temp);
 						write(slaves_backups[it->first], result.c_str(), result.size());
 						break;
 					}
 				}	
+			} else if(temp == "Closing connection."){
+				cout<<"se cerro"<<ConnectFD<<endl;
+				end_connection=true;
 			} else
 				cout<<"Slave : [ "<<temp <<" ]"<<endl; 
 		}

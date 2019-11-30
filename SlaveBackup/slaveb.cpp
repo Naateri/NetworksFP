@@ -275,11 +275,15 @@ void rcv_msg(){
 		transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
+		cout<<"temp "<<temp<<endl;
 		if(temp.substr(1,6)=="backup"){
 			string aux = buffer;
-			vector<string> select = separate_string(aux, "/");
+			cout<<"entro backup"<<temp<<endl;
+			slice_string(temp);
+			vector<string> select = separate_string(temp, "/");
 			
-			ofstream fs("slaves.txt");
+			ofstream fs;
+			fs.open("slaves.txt");
 			
 			for(int i=0;i<select.size();++i){
 				fs<<select[i]<<endl;

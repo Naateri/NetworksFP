@@ -183,9 +183,9 @@ string backup()
 			int id = get_id();
 			str_id = to_string(id);
 		}
-		tempRes += line + " / ";
+		tempRes += line + "/";
 	}
-	tempRes.resize(tempRes.size()-2);
+	tempRes.resize(tempRes.size()-1);
 	
 	file.close();
 	tempRes = str_id + "backup "+tempRes;
@@ -666,6 +666,16 @@ void keepalive(){
 	cout<<"sent"<<endl;
 }
 	
+void sighandler(int signum)
+{
+	if(signum== 2){
+		
+		string close = size_string("Closing Connection.");
+		write(SocketFD, close.c_str(), close.size());
+		cout<<"close"<<endl;
+	}
+}
+	
 void parse_message(string msg){
 	string result;
 	
@@ -680,6 +690,8 @@ void parse_message(string msg){
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
 
+		sleep(2);
+		
 		string b=backup();
 		write(SocketFD, b.c_str(), b.size());
 	
