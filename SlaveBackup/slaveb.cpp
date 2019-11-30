@@ -75,8 +75,8 @@ string make_read(int fd){
 	char size[l];
 	read(fd,size,l);
 	int len = atoi(size);
-	//cout<<"TAM"<<len<<endl;
-	char *buffer = new char [len+1];
+	cout << "TAM " << len <<endl;
+	char *buffer = new char [len];
 	int n = read(fd,buffer,len);
 	//buffer[n] = '\n';
 	/*char *buffer = new char [len];
@@ -115,9 +115,9 @@ int hash_function(std::string value){
 
 
 void keepalive(){
-	string respuesta="008 1024";
+	string respuesta= size_string("1024");
 	write(SocketFD, respuesta.c_str(), respuesta.size());
-	cout<<"envía"<<endl;
+	cout << "sent\n";
 }
 	
 void parse_message(string msg){
@@ -151,7 +151,8 @@ std::string select(std::string msg){
 	//cout<<"MENSAJE: "<<msg<<endl;
 	
 	std::fstream file;
-	string slave_txt = "backup.txt";
+	//string slave_txt = "backup.txt";
+	string slave_txt = "slaves.txt";
 	file.open(slave_txt, ios::in);
 	string line;
 	string tempRes;
@@ -215,14 +216,18 @@ std::string select(std::string msg){
 	return tempRes;
 }
 
-void requesting_access_backup(int SocketFD1, string identificador){ //new requesting access
+void requesting_access_backup(int SocketFD, string identificador){ //new requesting access
 	string request="SlaveBackup requesting access "+identificador;
 	request = size_string(request);
 	write(SocketFD, request.c_str(), request.size());
 	
+	cout << "Making request\n";
+	
 	sleep(1);
 	identificador = size_string(identificador);
 	write(SocketFD, identificador.c_str(), identificador.size());
+	
+	cout << "Sending id\n";
 	
 	string response = make_read(SocketFD);
 	
@@ -264,17 +269,17 @@ void rcv_msg(){
 	int n;
 	do{	
 		string temp = make_read(SocketFD);
-		string msg=temp;
+		string msg = temp;
 		//cout<<temp<<endl;
 		string type_query = slice_string(msg);
 		transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
-		if(temp.substr(0,6)=="backup"){
+		if(temp.substr(1,6)=="backup"){
 			string aux = buffer;
 			vector<string> select = separate_string(aux, "/");
 			
-			ofstream fs("backup.txt");
+			ofstream fs("slaves.txt");
 			
 			for(int i=0;i<select.size();++i){
 				fs<<select[i]<<endl;
@@ -295,7 +300,7 @@ void rcv_msg(){
 }
 			
 int main(void){
-	cout << "SLAVE"<<endl;
+	cout << "SLAVE BACKUP"<<endl;
 	
 	
 	//----------------------------

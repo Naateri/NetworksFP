@@ -186,17 +186,29 @@ int confirming_connection(int ConnectFD, string identificador = ""){ //0 -> clie
 		
 		int identificador = stoi(str);
 		
-		
-		
 		std::map<int,int>::iterator it;
 		it = slaves_backups.find(identificador);
+		
+		cout << "apparent id: " << identificador << endl;
+		
+		if (identificador == 0){ //server gives id to slave
+			for(uint i = 0; i < cur_ids.size(); i++){
+				if (cur_ids_backup[i] == false){
+					identificador = i+1;
+				}
+			}
+		}
+		
 		if (it != slaves_backups.end()){ //id found
 			
 			string notfound = size_string("No.");
-			write(ConnectFD, notfound .c_str(), notfound .size());
+			write(ConnectFD, notfound.c_str(), notfound.size());
 			return -1;
 		}
 		else{
+			
+			cout << "No backup, id: " << identificador << "\n";
+			
 			slaves_backups[identificador] = ConnectFD;
 			
 			cur_ids_backup[identificador-1] = true;
@@ -204,6 +216,9 @@ int confirming_connection(int ConnectFD, string identificador = ""){ //0 -> clie
 			cout<<"SlaveBackup registered, identifier: " << identificador <<endl;
 			
 			string confirm = size_string("OK.");
+			
+			cout << "Sending " << confirm << endl;
+			
 			write(ConnectFD, confirm.c_str(), confirm.size());
 			
 			make_read(ConnectFD);
@@ -706,7 +721,7 @@ void keepalive(){
 		int o=0;
 		for(it=slaves.begin();it != slaves.end();it++){
 			int retval=0;
-			string result= "012 server 5";
+			string result= size_string("server 5");
 			write(it->second, result.c_str(), result.size());
 			//cout<<"Ok"<<endl;
 			sleep(1);
@@ -758,6 +773,7 @@ void rcv_msg(int ConnectFD, bool slave){
 
 		if (slave){ //slave			
 			slice_string(temp);
+			cout << "Temp: " << temp << endl;
 			if(temp.substr(0,1)=="s"){
 				cout<<"Temp: ";
 				cout<< temp<<endl;
@@ -839,14 +855,19 @@ void rcv_msg(int ConnectFD, bool slave){
 				/*write(ConnectFD, algo.c_str(),algo.size());*/
 			} else if (temp == "Closing Connection."){
 				end_connection = closing_connection(ConnectFD); //client ending connection
-			} else if(temp== " 1024"){
+			} else if(temp == "1024"){
 				cout<<"entro "<<ConnectFD<<endl;
 				respuestas.push_back(ConnectFD);
-			} else if(temp.substr(0,6)=="backup"){
-				size_string(temp);
+			} else if(temp.substr(1,6)=="backup"){
+				string id_str = temp.substr(0,1);
+				int id_int = stoi(id_str);
+				//size_string(temp);
 				map<int, int>::iterator it;
-				for(it=slaves.begin();it != slaves.end();it++){
-					if(it->second==ConnectFD){
+				for(it=slaves.begin(); it != slaves.end();it++){
+					if(it->first==id_int){
+						/*result = temp.substr(6, temp.size() - 6);
+						result = size_string(result);*/
+						result = size_string(temp);
 						write(slaves_backups[it->first], result.c_str(), result.size());
 						break;
 					}

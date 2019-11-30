@@ -158,7 +158,9 @@ int hash_function(std::string value){
 	}
 	return cur_sum % MAX_SLAVES + 1;
 }
-	
+
+int get_id();
+
 string backup()
 {
 	std::fstream file;
@@ -166,13 +168,27 @@ string backup()
 	file.open(slave_txt, ios::in);
 	string line;
 	string tempRes;
+	string node, str_id;
+	int line_ = 0;
 	while ( getline (file,line) && !file.eof()){
+		if (line_ == 0){
+			/*int i = 0;
+			while ( line[i] != '-'){
+				node += line[i];
+				i++;
+			}
+			line_++;*/
+			
+			//delSpaces(node);
+			int id = get_id();
+			str_id = to_string(id);
+		}
 		tempRes += line + " / ";
 	}
 	tempRes.resize(tempRes.size()-2);
 	
 	file.close();
-	tempRes="backup "+tempRes;
+	tempRes = str_id + "backup "+tempRes;
 	tempRes = size_string(tempRes);
 	return tempRes;
 }
@@ -645,7 +661,7 @@ void update_node(string node){ //UPDATE <NODE> ATTR atrribute:value
 }
 
 void keepalive(){
-	string respuesta="008 1024";
+	string respuesta= size_string("1024");
 	write(SocketFD, respuesta.c_str(), respuesta.size());
 	cout<<"sent"<<endl;
 }
