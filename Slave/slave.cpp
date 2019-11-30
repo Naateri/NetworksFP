@@ -666,7 +666,7 @@ void keepalive(){
 	cout<<"sent"<<endl;
 }
 	
-void sighandler(int signum)
+/*void sighandler(int signum)
 {
 	if(signum== 2){
 		
@@ -674,7 +674,7 @@ void sighandler(int signum)
 		write(SocketFD, close.c_str(), close.size());
 		cout<<"close"<<endl;
 	}
-}
+}*/
 	
 void parse_message(string msg){
 	string result;
