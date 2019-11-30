@@ -1,7 +1,5 @@
 /* Server code in C++ */
-//g++ -std=c++0x -o server.exe server.cpp
-
-
+//g++ server.cpp -o server -std=c++11 -lpthread
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -38,12 +36,12 @@ std::map<int, int> slaves; //Stored as: ID-FD
 std::map<int, int> slaves_backups;
 vector<bool> cur_ids; //vector to know available ids
 vector<bool> cur_ids_backup; //vector to know available ids
+
 vector<string> visitedNodes;
 
 int node_counter = 0;   
 
-int PORT = 40005;
-
+int PORT = 40000;
 ///Para probar 
 string men = "INSERT Hola {loquesea:val, otro:bai}"; 
 ///
@@ -57,9 +55,10 @@ string lrtrim(string str) {
 	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
 	return str ; 
 }
+
 string size_string(string s){
 	int num = s.size();
-	num += l+1;
+	num += 1; // " "
 	string res = to_string(num);
 	
 	if(res.size() == 1)
@@ -67,10 +66,7 @@ string size_string(string s){
 	else if (res.size() ==2){
 		res = '0'+res;
 	}
-	
 	return res + ' ' + s;
-	
-	
 }
 string slice_string(string &s){
 	string delimiter = " ";
@@ -81,17 +77,23 @@ string slice_string(string &s){
 }
 	
 string make_read(int fd){
+	//cout<<"Make read"<<endl;
 	char size[l];
 	read(fd,size,l);
 	int len = atoi(size);
-	//cout<<len<<endl;
-	char *buffer = new char [len];
-	read(fd,buffer,len);
+	//cout<<"TAM"<<len<<endl;
+	char *buffer = new char [len+1];
+	int n = read(fd,buffer,len);
+	//buffer[n] = '\n';
+	/*char *buffer = new char [len];
+	read(fd,buffer,len);*/
 	string str(buffer); 
-	slice_string(str);
+	
+	str = lrtrim(str);
+	str.resize(len-1);
+	//cout<<"STRING: |"<<str<<"|"<<endl;
 	return str;
-}
-		
+}		
 
 vector<string> separate_string(string s, string delimiter){
 	vector<string> values;
@@ -120,8 +122,7 @@ int hash_function(std::string value){
 	return cur_sum % MAX_SLAVES + 1;
 }
 
-int confirming_connection(int ConnectFD, string identificador = ""){ //0 -> client, 1 -> slave, -1 -> error, 2->slave_backup
-	
+int confirming_connection(int ConnectFD, string identificador = ""){ //0 -> client, 1 -> slave, -1 -> error, 2->slave_backup	
 	string str = make_read(ConnectFD);
 	//cout<<"DEl cliente |"<<str<<"|"<<endl;
 	
@@ -230,16 +231,11 @@ bool closing_connection(int ConnectFD){ //client
 
 	string str = make_read(ConnectFD);
 	
-	
-	
 	if (str == "Yes."){
 		printf("Ending connection with client %d\n", ConnectFD);
 		return true;
 	} else return false;
 }
-
-
-
 	
 std::string insert(string msg){
 	std::string return_to_client; //result to be sent to client
@@ -270,7 +266,6 @@ std::string insert(string msg){
 		if (it != slaves.end()){ 
 			connection_slave = true;
 		}
-		
 
 		if (connection_slave){
 			
@@ -349,6 +344,7 @@ std::string insert(string msg){
 
 
 }
+
 std::string select_node(string msg, int lvl,int CId){
 	
 	
@@ -380,10 +376,7 @@ std::string select_node(string msg, int lvl,int CId){
 		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
 	
 		return_to_client  =  "Making select query";
-		
-	}
-	
-	else{
+	}else{
 		bool connection_slave_backup = false ;
 		std::map<int,int>::iterator it;
 		it = slaves_backups.find(hash);
@@ -422,13 +415,157 @@ bool verify_connection(string n){
 	
 }
 	
+void delete_node(string nodes){
+	vector<string> nodos = separate_string(nodes," ");
+	for(uint i=0;i<nodos.size();++i){
+		delSpaces(nodos[i]);
+		//cout<<nodos[i]<<endl;
+	}
+	
+	string node_id = nodos[0];
+	string fd = nodos[nodos.size()-1];
+	//cout<<"FD"<<fd<<endl;
+	
+	//cout<<"NODOS :"<<endl;
+	bool connection_to_all = true; 
+	for(uint i=1;i<nodos.size()-1;++i){
+		//cout<<"|"<<nodos[i]<<"|"<<endl;
+		connection_to_all &= verify_connection(nodos[i]);
+		//cout<<"Conexion: "<<connection_to_all <<endl;
+		if(connection_to_all == false){
+			string response = "Unconnected slave. Please try again later.";
+			size_string(response);
+			write(stoi(fd), response.c_str(), response.size());
+			return;  
+		}
+	}
+	
+	//cout<<"Mandado nodo a borrar "<<endl;
+	int ahash = hash_function(node_id);
+	string node1 = "server 3 " + node_id ;
+	node1 = size_string(node1);
+	write(slaves[ahash], node1.c_str(),node1.size());
+	//cout<<"---------"<<endl;
+	
+	string num_query = "server 4 ";
+	string msg_slave1,msg_slave2; 
+	
+	for(uint i=1;i<nodos.size()-1;++i){
+		int hash1 = hash_function(node_id);
+		//cout<<"- "<<node_id << " - " << nodos[i]<< " deleted\n";
+		msg_slave1 = "";
+		msg_slave1 = num_query + node_id + " " + nodos[i];
+		//cout<<"+ "<<msg_slave1<<"|"<<msg_slave1.size()<<"|"<<endl;
+		msg_slave1 = size_string(msg_slave1);
+		write(slaves[hash1], msg_slave1.c_str(), msg_slave1.size());
+		//sleep(1);
+	}
+	
+	for(uint i=1;i<nodos.size()-1;++i){	
+		msg_slave2 = "";
+		int hash2 = hash_function(nodos[i]);
+		string msg_slave2 = num_query + nodos[i] + " " + node_id;
+		//cout<<"+ "<<msg_slave2<<"|"<<msg_slave2.size()<<"|"<<endl;
+		msg_slave2 = size_string(msg_slave2);
+		write(slaves[hash2], msg_slave2.c_str(), msg_slave2.size());
+		//sleep(1);
+		
+	}	
+	
+	string response = "Node " + node_id +" deleted";
+	response = size_string(response);
+	write(stoi(fd), response.c_str(), response.size());
+	cout<<response<<endl;
+	
+}
 
-string delete_node(string nodes){
+std::string delete_query(string msg, int fd){
+	std::string return_to_client; //result to be sent to client
+	string num_query; 
+	//cout<<msg<<endl;
+	bool deleteNode = true;
+	for(uint i=0;i<msg.size();++i){
+		if(msg[i] == '-'){
+			deleteNode = false;
+			break;
+		}
+	}
 	
+	/// Borrando nodo
+	if(deleteNode == true){
+		delSpaces(msg);
+		int hash = hash_function(msg);
+		
+		//bool connection_slave = false;
+		
+		std::map<int,int>::iterator it;
+		it = slaves.find(hash);
+		if (it != slaves.end()){ 
+			//connection_slave = true;
+			cout<<"Verifying the connection with the slave"<<endl;
+			num_query = "server adj ";
+			string msg_slave = num_query + msg +' ' +to_string(fd) ;
+			msg_slave = size_string(msg_slave);
+			write(slaves[hash], msg_slave.c_str(), msg_slave.size());
+			
+			return "Verifying the connection with the slave.";
+		}
+		else
+							 
+							 return "Unconnected slave. Please try again later.";
+	}
+	
+	/// Borrando relacion
+		else{ 
+		vector<string> nodes = separate_string(msg,"-");
+		
+		delSpaces(nodes[0]);
+		delSpaces(nodes[1]);
+		
+		int hash1 = hash_function(nodes[0]);
+		int hash2 = hash_function(nodes[1]);
+		
+		/// Verificar conexion con ambos slaves
+		bool connection_slave1 = false;
+		bool connection_slave2 = false;
+		
+		std::map<int,int>::iterator it;
+		it = slaves.find(hash1);
+		if (it != slaves.end()){ 
+			connection_slave1 = true;
+		}
+		it = slaves.find(hash2);
+		if (it != slaves.end()){ 
+			connection_slave2 = true;
+		}
+		
+		if(connection_slave1 && connection_slave2){
+			num_query = "server 4 ";
+			if(connection_slave1){
+				cout<<"- "<<nodes[0] << " - " << nodes[1]<< " deleted\n";
+				string msg_slave = num_query + nodes[0] + " " + nodes[1];
+				msg_slave = size_string(msg_slave);
+				write(slaves[hash1], msg_slave.c_str(), msg_slave.size());
+			}
+			
+			if( connection_slave2){
+				cout<<"- "<<nodes[1] << " - " << nodes[0]<< " deleted\n";
+				string msg_slave = num_query + nodes[1] + " " + nodes[0];
+				msg_slave = size_string(msg_slave);
+				write(slaves[hash2], msg_slave.c_str(), msg_slave.size());
+			}
+			return "Adjacency deleted";
+		}
+		
+		else
+		   return "Unconnected slave. Please try again later.";
+		
+	}
+}
+
+string update_node(string nodes){
 	std::size_t found = nodes.find('\0');
-	
 	nodes = nodes.substr(0,found);
-	
 	
 	vector<string> nodos = separate_string(nodes," ");
 	for(int i=0;i<nodos.size();++i){
@@ -481,111 +618,46 @@ string delete_node(string nodes){
 		
 	}	
 	
-
-	
 	return "Node deleted";
-	//cout<<"Node deleted"<<endl;
-	
-	
 }
 
-std::string delete_query(string msg){
+
+std::string update_query(string msg){ //UPDATE <NODE> ATTR atrribute:value
 	std::string return_to_client; //result to be sent to client
 	string num_query; 
 	//cout<<msg<<endl;
-	bool deleteNode = true;
-	for(uint i=0;i<msg.size();++i){
-		if(msg[i] == '-'){
-			deleteNode = false;
-			break;
-		}
+	
+	vector<string> temp = separate_string(msg, " ");
+	string node_name = temp[0];
+	
+	cout << "Node to be eval: " << node_name << endl;
+	
+	delSpaces(node_name);
+	int hash = hash_function(node_name);
+	bool connection_slave = false;
+	
+	std::map<int,int>::iterator it;
+	it = slaves.find(hash);
+	if (it != slaves.end()){ 
+		connection_slave = true;
+		cout<<"Verifying the connection with the slave"<<endl;
+		num_query = "server 9 ";
+		string msg_slave = num_query + msg ;
+		msg_slave = size_string(msg_slave);
+		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
+		
+		return "UPDATE - Verifying the connection with the slave.";
 	}
-	
-	/// Borrando nodo
-	if(deleteNode == true){
-		delSpaces(msg);
-		int hash = hash_function(msg);
-		
-		bool connection_slave = false;
-	
-		std::map<int,int>::iterator it;
-		it = slaves.find(hash);
-		if (it != slaves.end()){ 
-			connection_slave = true;
-			cout<<"Verifying the connection with the slave"<<endl;
-			num_query = "server adj ";
-			string msg_slave = num_query + msg ;
-			msg = size_string(msg);
-			write(slaves[hash], msg_slave.c_str(), msg_slave.size());
-			
-			return "Verifying the connection with the slave.";
-		}
-		else
-		
-			return "Unconnected slave. Please try again later.";
-	}
-	
-	/// Borrando relacion
-	else{ 
-		vector<string> nodes = separate_string(msg,"-");
-		
-		delSpaces(nodes[0]);
-		delSpaces(nodes[1]);
-		
-		int hash1 = hash_function(nodes[0]);
-		int hash2 = hash_function(nodes[1]);
-		
-		/// Verificar conexion con ambos slaves
-		bool connection_slave1 = false;
-		bool connection_slave2 = false;
-		
-		std::map<int,int>::iterator it;
-		it = slaves.find(hash1);
-		if (it != slaves.end()){ 
-			connection_slave1 = true;
-		}
-		it = slaves.find(hash2);
-		if (it != slaves.end()){ 
-			connection_slave2 = true;
-		}
-		
-		if(connection_slave1 && connection_slave2){
-			num_query = "server 4 ";
-			if(connection_slave1){
-				cout<<"- "<<nodes[0] << " - " << nodes[1]<< " deleted\n";
-				string msg_slave = num_query + nodes[0] + " " + nodes[1];
-				msg_slave = size_string(msg_slave);
-				write(slaves[hash1], msg_slave.c_str(), msg_slave.size());
-			}
-			
-			if( connection_slave2){
-				cout<<"- "<<nodes[1] << " - " << nodes[0]<< " deleted\n";
-				string msg_slave = num_query + nodes[1] + " " + nodes[0];
-				msg_slave = size_string(msg_slave);
-				write(slaves[hash2], msg_slave.c_str(), msg_slave.size());
-			}
-			return "Adjacency deleted";
-		}
-		
-		else
-		   return "Unconnected slave. Please try again later.";
-	
-	}
+	else return "Unconnected slave. Please try again later.";
 }
-
-
-
-std::string parse_message_client(string str_msg){
 	
-	int level;
-	cout<< "Query : "<<str_msg<<endl;
+std::string parse_message_client(string str_msg,int CId){
 	
+
 	/// Saber cual es la consulta
 	string query = slice_string(str_msg);
 	transform(query.begin(), query.end(),query.begin(), ::tolower);
-	//cout<<query<<endl;
-	///
-	
+
 	//know what the server wants
 	if (query == "insert" ){
 		return insert(str_msg);
@@ -605,12 +677,13 @@ std::string parse_message_client(string str_msg){
 		level = std::stoi(tempLevelString);
 		cout<<level<<endl;
 		*/
-		//return select_node(node_id,1,CId);
+		return select_node(node_id,1,CId);
 	} 
 	else if(query == "delete"){
-		return delete_query(str_msg);
+		return delete_query(str_msg, CId);
+	} else if (query == "update"){
+		return update_query(str_msg);
 	}
-	
 	else {
 		return "Error. Query not understood\n";
 	}
@@ -622,10 +695,10 @@ void keepalive(){
 	fd_set rfds;
 	timeval tv;
 	tv.tv_sec = 8;
-    tv.tv_usec = 0;
+	tv.tv_usec = 0;
 	bool end_connection = false;
 	do{
-		bool arr[slaves.size()];
+		bool *arr = new bool[slaves.size()];
 		for(int i=0;i < slaves.size();i++){
 			arr[i]=false;
 		}
@@ -633,7 +706,8 @@ void keepalive(){
 		int o=0;
 		for(it=slaves.begin();it != slaves.end();it++){
 			int retval=0;
-			string result= "012 server 5";
+			string result= "server 5";
+			result=size_string(result);
 			write(it->second, result.c_str(), result.size());
 			//cout<<"Ok"<<endl;
 			sleep(1);
@@ -655,11 +729,7 @@ void keepalive(){
 				borra.push_back(it->first);
 			}
 		}
-		for(int i=0;i<borra.size();i++){
-			slaves.erase(slaves[borra[i]]);
-			shutdown(slaves[borra[i]], SHUT_RDWR);
-			close(slaves[borra[i]]);	
-		}
+
 		
 		for(int i=0;i<borra.size();i++){
 			for(it=slaves.begin();it != slaves.end();it++){
@@ -682,19 +752,13 @@ void rcv_msg(int ConnectFD, bool slave){
 	bool end_connection = false;
 	std::string slave_msg;
 	std::string result;
-	int n;
+
 	do{
-		
+		sleep(1);
 		string temp = make_read(ConnectFD);
 
-		if (n < 0) perror("ERROR reading from socket");
-			
-		if ( slave){ //slave
-			
-		
-			string recieved = temp;
-			string d = slice_string(temp); 
-			
+		if (slave){ //slave			
+			slice_string(temp);
 			if(temp.substr(0,1)=="s"){
 				cout<<"Temp: ";
 				cout<< temp<<endl;
@@ -722,7 +786,7 @@ void rcv_msg(int ConnectFD, bool slave){
 							cout<<"Nodo no visitado"<<endl;
 							visitedNodes.push_back(nodes[j]);
 							sleep(1);
-							//select_node(nodes[j],1,id);
+							select_node(nodes[j],1,id);
 						}
 						
 						findNode = false;
@@ -757,23 +821,29 @@ void rcv_msg(int ConnectFD, bool slave){
 				string message = "s"+temp.substr(7+cidLength,temp.size()-7+cidLength);
 				cout<<"cidCLient"<<cidClient<<endl;*/
 				//write(id,select_query.c_str(),select_query.size());
-			
-				
+				/*=======
+				slice_string(temp);
+				string client_id = slice_string(temp);
+				int id = stoi(client_id);
+				string select_query = "sq " + temp;
+				select_query = size_string(select_query);
+				write(id,select_query.c_str(),select_query.size());
+				>>>>>>> Jazmine*/
 			}
 			
-			else if(d == "delete"){ /// Se estan pasando las adyacencias del nodo que queremos borrar
+			else if(temp.substr(0,6) == "delete"){ /// Se estan pasando las adyacencias del nodo que queremos borrar
+				//cout<<"LLEGO: "<<temp<<endl;
+				slice_string(temp);
 				cout<<"Starting to delete node"<<endl;
-				string algo = delete_node(temp); /// Borrar el nodo recien 
-				algo = size_string(algo);
-				write(ConnectFD, algo.c_str(),algo.size());
-			}
-			
-			else if(temp=="1024"){
+				delete_node(temp); /// Borrar el nodo recien 
+				//algo = size_string(algo);
+				/*write(ConnectFD, algo.c_str(),algo.size());*/
+			} else if (temp == "Closing Connection."){
+				end_connection = closing_connection(ConnectFD); //client ending connection
+			} else if(temp== "1024"){
 				cout<<"entro "<<ConnectFD<<endl;
 				respuestas.push_back(ConnectFD);
-			}
-			
-			else if(temp.substr(0,6)=="backup"){
+			} else if(temp.substr(0,6)=="backup"){
 				size_string(temp);
 				map<int, int>::iterator it;
 				for(it=slaves.begin();it != slaves.end();it++){
@@ -782,42 +852,21 @@ void rcv_msg(int ConnectFD, bool slave){
 						break;
 					}
 				}	
-			}
-			else if (temp == "Closing Connection."){
-				cout<<"se cerro"<<endl;
-				end_connection=true;
-			}
-			//else
-			//cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
-			
-			
-			//printf("Slave %d: [%s]\n", ConnectFD, buffer);
-			/*
-			char *mensaje = new char[men.size()+1];
-			std::strcpy(mensaje, men.c_str());
-			result = parse_message_slave(mensaje);
-			*/
+			} else
+				cout<<"Slave : [ "<<temp <<" ]"<<endl; 
 		}
 		
-		else if (temp == "Closing Connection."){
-			end_connection = closing_connection(ConnectFD); //client ending connection
-		}
 		else if (!slave) {
-			
-			cout<<"You're a client.";
-			result = parse_message_client(temp);
+			cout<<"You're a client."<<endl;
+			result = parse_message_client(temp,ConnectFD);
 			result = size_string(result);
-			n = write(ConnectFD, result.c_str(), result.size());
-	
-			
-			
-		} else {
+			write(ConnectFD, result.c_str(), result.size());
+		} 
+		else {
 			cout<<"Query not understood"<<endl;
 			std::string res = "Query not understood\n";
-			
 			res = size_string(res);
-			
-			n = write(ConnectFD, res.c_str(), res.size());
+			write(ConnectFD, res.c_str(), res.size());
 		}
 		
 	}while (!end_connection);
@@ -829,7 +878,6 @@ void rcv_msg(int ConnectFD, bool slave){
 				
 int main(void) {
 	cout<<"SERVER"<<endl;
-	slaves.clear();
 	struct sockaddr_in stSockAddr;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
@@ -863,6 +911,9 @@ int main(void) {
 		cur_ids.push_back(false);
 		cur_ids_backup.push_back(false);
 	}
+	
+	std::thread t2(keepalive);
+	t2.detach();
 
 	for(;;){
 		ConnectFD = accept(SocketFD, NULL, NULL);
@@ -884,8 +935,8 @@ int main(void) {
 			t1.detach();
 			
 			if(primer_slave==true){
-				std::thread t2(keepalive);
-				t2.detach();
+				/*std::thread t2(keepalive);
+				t2.detach();*/
 				primer_slave=false;
 			}
 		}else if (connection == 2) { //slave_backup
@@ -897,6 +948,7 @@ int main(void) {
 			close(ConnectFD);
 		}
 	}
+
 	shutdown(ConnectFD, SHUT_RDWR);
 	close(SocketFD);
 	return 0;

@@ -17,21 +17,16 @@
 #include <vector>
 #include <algorithm>
 #include <regex>
-#include <signal.h>
 
-#define MAX_SLAVES 2
+#define MAX_SLAVES 3
 #define uint unsigned int
 
 using namespace std;
 
 int SocketFD;
 
-int SocketFD1;
-char buffer[256];
-int ConnectFD;
 std::string IP = "127.0.0.1";
-int PORT = 40000;
-int PORTSLAVE = 50007;
+int PORT = 40002;
 
 bool end_connection = false;
 const int l = 3;
@@ -43,11 +38,9 @@ string lrtrim(string str) {
 	return str ; 
 }
 
-
 string size_string(string s){
 	int num = s.size();
 	num += 1; // " "
-	//num += l+1;
 	string res = to_string(num);
 	
 	if(res.size() == 1)
@@ -56,9 +49,9 @@ string size_string(string s){
 		res = '0'+res;
 	}
 	
-	return res + ' ' + s;	
-	
+	return res + ' ' + s;
 }
+	
 /*void requesting_access(int SocketFD, string identificador){
 	string request="Slave requesting access "+identificador;
 	int n = write(SocketFD, "Slave requesting access", 26);
@@ -103,18 +96,9 @@ string make_read(int fd){
 	str.resize(len-1);
 //	cout<<"STRING: |"<<str<<"|"<<endl;
 	return str;
-
-	/*char size[l];
-	read(fd,size,l);
-	int len = atoi(size);
-	//cout<<len<<endl;
-	char *buffer = new char [len];
-	read(fd,buffer,len);
-	string str(buffer); 
-	slice_string(str);
-	return str;*/
 }
-
+	
+	
 vector<string> separate_string(string s, string delimiter){
 	vector<string> values;
 	uint pos = s.find(delimiter);
@@ -159,23 +143,7 @@ int hash_function(std::string value){
 	return cur_sum % MAX_SLAVES + 1;
 }
 	
-string backup()
-{
-	std::fstream file;
-	string slave_txt = "slave.txt";
-	file.open(slave_txt, ios::in);
-	string line;
-	string tempRes;
-	while ( getline (file,line) && !file.eof()){
-		tempRes += line + " / ";
-	}
-	tempRes.resize(tempRes.size()-2);
-	
-	file.close();
-	tempRes="backup "+tempRes;
-	tempRes = size_string(tempRes);
-	return tempRes;
-}
+
 
 int get_id(){
 	ifstream fs;
@@ -192,7 +160,7 @@ int get_id(){
 		if (value.size() == 0) return 0;
 		
 		//FALTA CONSIDERAR ESPACIOS
-		delSpaces(value);
+		
 		return hash_function(value);
 	} else return 0;
 }
@@ -201,8 +169,8 @@ string insert_node(string s){
 	
 	std::string return_to_server = "Node was inserted"; //result to be sent to client
 	string node_id = slice_string(s);
-	//cout<<"NODE ID: " <<node_id<<endl;
-	//cout<<"RESTO: "<<s<<endl;
+	cout<<"NODE ID: " <<node_id<<endl;
+	cout<<"RESTO: "<<s<<endl;
 	vector<string> attr;
 	
 	if(s.size()>5){/// 2 minimo {a:c}
@@ -215,6 +183,8 @@ string insert_node(string s){
 	else{
 		attr.resize(0);
 	}
+	
+	
 	
 	/*
 	for(uint i=0;i<attr.size();++i){
@@ -311,13 +281,8 @@ string insert_adjacency(string s){
 }
 	
 string all_adjacencies(string msg){
-	vector<string> info = separate_string(msg, " ");
-	string fd = info[1];
-	delSpaces(info[0]);
-	string node_id = info[0];
-	/*
 	delSpaces(msg);
-	string node_id = msg; */
+	string node_id = msg;
 	int num_file = hash_function(msg);
 	
 	std::fstream myfile;
@@ -338,47 +303,47 @@ string all_adjacencies(string msg){
 			if(line == "\0"){
 				break;
 			}
-			vector<string> adj = separate_string(line," "); 
-			delSpaces(adj[0]);
-			//string aux = line.substr(0, node_id.size()); 
-			if(adj[0] == node_id){
-				delSpaces(adj[2]);
-				txt.push_back(adj[2]);
-			}
-		/*
+
 			string aux = line.substr(0, node_id.size()); 
 			if(aux == node_id){
 				int tam = node_id.size(); 
 				txt.push_back(line.substr(tam+3, line.size()-tam-3));
 			}
-		*/
+			
+			
+			
 		}
 		myfile.close();
 		
 	}
+	string all_adjacencies = "delete";
 	
-	string all_adjacencies = "delete" ;	
 	for(int i=0;i<txt.size();++i){
 		all_adjacencies += " " + txt[i];
 	}
-
-	all_adjacencies += ' ' + fd;
-	all_adjacencies = size_string(all_adjacencies);
-	//cout<<"Mandando: "<<all_adjacencies<<endl;
+	
+	
+	
 	return all_adjacencies ;
 	
 }
 	
 string delete_adjacency(string s){
 	vector<string> nodes = separate_string(s , " ");
+	
+	
 	string rel =nodes[0] +" - "+nodes[1];
 	
 	int num_file = hash_function(nodes[0]);
 	
+	
+	
 	std::fstream myfile, outfile;
+	
 	//string slave_txt = "slave_" + to_string(num_file)+ ".txt";
 	
 	string slave_txt = "slave.txt";
+	
 	//cout<<slave_txt<<endl;
 	myfile.open(slave_txt, ios::in);
 	
@@ -436,29 +401,11 @@ void delete_node(string node){
 	if (myfile.is_open()){
 		while ( getline (myfile,line) && !myfile.eof()){
 			//delSpaces(line);
-			//cout<<"Leyendo: |"<<line<<"|"<<endl;
+			cout<<"Leyendo: |"<<line<<"|"<<endl;
 			
 			if(line == node){
 				begin = true;
 			}
-			
-			else if(begin && line == "" && !end){
-				end = true;
-				continue;
-			}
-			
-			if(begin==true && end == true){
-				txt.push_back(line);
-			}
-			else if(begin==true){
-				;
-			}
-			else if(!begin){
-				txt.push_back(line);
-			}
-			else
-				txt.push_back(line);
-		/* //BRANCH MANUEL
 			else if(begin==true){
 				;
 			}
@@ -470,10 +417,24 @@ void delete_node(string node){
 			}
 			else
 			   txt.push_back(line);
-		*/
+			
+			
 		}
 		myfile.close();
 	}
+	/*
+	outfile.open(slave_txt, ios::out );
+	outfile.clear();
+	outfile.seekp(0);
+	
+	for(uint i=0;i<txt.size();++i){
+		cout<<txt[i]<<endl;
+		outfile <<txt[i]<<endl;
+	}
+	
+	outfile.close();
+	*/
+	
 }
 	
 
@@ -483,11 +444,7 @@ std::string select(std::string msg){
 	//cout<<"MENSAJE: "<<msg<<endl;
 	
 	std::fstream file;
-
 	string slave_txt = "slave.txt";
-
-	//string slave_txt = "backup.txt";
-
 	file.open(slave_txt, ios::in);
 	string line;
 	string tempRes;
@@ -507,7 +464,7 @@ std::string select(std::string msg){
 			
 			if(line == "" && once){
 				
-				tempRes+= "|/Attributes: / ";
+				tempRes+= "Attributes: / ";
 				attributes = 1;
 				once = 0;
 			}
@@ -551,132 +508,29 @@ std::string select(std::string msg){
 	//cout<<"res 1 "<<tempRes<<endl;
 	tempRes = size_string(tempRes);
 	return tempRes;
-}
-
-void update_node(string node){ //UPDATE <NODE> ATTR atrribute:value
 	
-	/*std::size_t found = node.find(' ');
-	
-	node = node.substr(0,found);*/
-	
-	string attribute, value;
-	string real_node = slice_string(node);
-	
-	cout << "real_node: " << real_node << endl;
-	
-	slice_string(node); //Attr
-	
-	cout << "node: " << node << endl; //ATTR
-	
-	attribute = slice_string(node);
-	vector<string> attributes = separate_string(attribute, ":");
-	attribute = attributes[0]; value = attributes[1];
-	
-	cout << "attribute " << attribute << ", value " << value << endl;
-	
-	delSpaces(real_node);
-	delSpaces(attribute); delSpaces(value);
-	
-	std::fstream myfile, outfile;
-	
-	string slave_txt = "slave.txt";
-	
-	myfile.open(slave_txt, ios::in);
-	
-	string line, temp;
-	
-	vector<string> txt;
-	bool begin = false;
-	bool end = false;
-	bool updated = false;
-	bool found_node = false;
-	if (myfile.is_open()){
-		while ( getline (myfile,line) && !myfile.eof()){
-			//delSpaces(line);
-			cout<<"Leyendo: |"<<line<<"|"<<endl;
-			
-			if(line == real_node){
-				begin = true;
-				found_node = true;
-				txt.push_back(line);
-			}
-			else if(begin==true){
-				cout << "line.substr " << line.substr(0, attribute.size()) << endl;
-				if (line.substr(0, attribute.size()) == attribute){
-					temp = attribute + " : " + value;
-					txt.push_back(temp);
-					updated = true;
-				} else txt.push_back(line);
-			}
-			else if(begin == true && line == "" ){
-				if (updated == true){
-					txt.push_back(line);
-				} else {
-					temp = attribute + " : " + value;
-					txt.push_back(temp);
-				}
-				end = true;
-			}
-			else if(begin==true && end == true){
-				txt.push_back(line);
-			}
-			else
-				txt.push_back(line);			
-		}
-		myfile.close();
-	}
-	
-	if (updated == false && found_node == true){
-		temp = attribute + " : " + value;
-		txt.push_back(temp);
-	}
-	
-	outfile.open(slave_txt, ios::out );
-	outfile.clear();
-	outfile.seekp(0);
-	
-	for(uint i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
-		outfile <<txt[i]<<endl;
-	}
-	
-	outfile.close();
 	
 }
-
-void keepalive(){
-	string respuesta="1024";
-	string res=size_string(respuesta);
-	write(SocketFD, res.c_str(), res.size());
-	cout<<"sent"<<endl;
-}
+		
 	
 void parse_message(string msg){
 	string result;
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
-	delSpaces(type_query);
-	//cout<<"Type Query: "<<type_query<<endl;
+	
 	
 	if(type_query == "0"){
 		cout<<"Inserting node"<<endl;
 		result = insert_node(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
-
-		string b=backup();
-		write(SocketFD, b.c_str(), b.size());
-	
 	}
 	else if(type_query == "1"){
 		cout<<"Inserting adjacency"<<endl;
 		result = insert_adjacency(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
-		
-		string b=backup();
-		write(SocketFD, b.c_str(), b.size());
 	}
 	else if(type_query == "2"){
 		cout<<"Select"<<endl;
@@ -686,33 +540,18 @@ void parse_message(string msg){
 	} 
 	else if(type_query == "3"){
 		cout<<"Delete node"<<endl;
+		
 		delete_node(msg);
-	
-		string b=backup();
-		write(SocketFD, b.c_str(), b.size());
 	} 
 	else if(type_query == "adj"){
 		cout<<"Requesting all adjacencies of a node"<<endl;
 		result = all_adjacencies(msg);
 		result = size_string(result);
 		write(SocketFD, result.c_str(), result.size());
-
-		string b=backup();
-		write(SocketFD, b.c_str(), b.size());
 	}
 	else if(type_query == "4"){
 		cout<<"Delete adjacency"<<endl;
 		delete_adjacency(msg);
-	} else if (type_query == "9"){
-		cout << "Update attribute"<< endl;
-		update_node(msg);
-	}
-/*
-		string b=backup();
-		write(SocketFD, b.c_str(), b.size()); */
-	else if(type_query[0] == '5'){
-		cout<<"Keep alive"<<endl;
-		keepalive();
 		
 	} 
 	else {
@@ -741,7 +580,6 @@ void requesting_access(int SocketFD, string identificador){ //new requesting acc
 	} else {
 		string msg_ok = size_string("OK.");
 		write(SocketFD, msg_ok.c_str(), msg_ok.size());
-
 		printf("Connection to database as a slave established.\n");
 	}
 }
@@ -756,7 +594,7 @@ void send_msg(){
 			end_connection = true;
 		}
 		
-		input = (input);
+		input = size_string(input);
 		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
 		
 	} while(!end_connection);
@@ -770,57 +608,32 @@ void rcv_msg(){
 	do{	
 		string temp = make_read(SocketFD);
 		
+		
+	
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
 		
 		if (temp.substr(0, 6) == "server"){
 			
 			slice_string(temp);
-			//cout<<"Mensaje de server"<<endl;
-			//cout<<temp<<endl;
-			parse_message(temp);
-		}
-
-		//cout<<"Server: [" << temp <<"]"<<endl;
-		
-		/*
 			cout<<"Mensaje de server"<<endl;
 			cout<<temp<<endl;
 			parse_message(temp);
-		
-		}*/
-		
-		if (temp.substr(0, 6) == "backup"){
-			cout<<"Mensaje de backup"<<endl;
-			string id = to_string(get_id());
-			id = size_string(id);
-			write(SocketFD, id.c_str(), id.size());
+			
+			
+
 		}
 		
-		printf("Server: [%s]\n",buffer);
+		
+
+		cout<<"Server: [" << temp <<"]"<<endl;
 	} while(!end_connection);
 	
 	end_connection = true;
 }
-
-void sighandler(int signum) 
-{	
-	if(signum == 2)
-	{
-		
-		string close = size_string("Closing Connection.");
-		write(SocketFD, close.c_str(), close.size());
-		
-		//shutdown(SocketFD, SHUT_RDWR);
-		
-		//close(SocketFD);
-	}
-}
-
 			
 int main(void){
 	cout << "SLAVE"<<endl;
-
 	struct sockaddr_in stSockAddr;
 	int Res;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -858,6 +671,8 @@ int main(void){
 		close(SocketFD);
 		exit(EXIT_FAILURE);
 	}
+	/*do{
+	}while(strcmp(buffer, "chau") != 0); */
 	
 	string id = to_string(get_id());
 	
@@ -868,9 +683,10 @@ int main(void){
 	
 	//t1.join();
 	t2.join();
-
 	shutdown(SocketFD, SHUT_RDWR);
 	
 	close(SocketFD);
+	
 	return 0;
 }
+	

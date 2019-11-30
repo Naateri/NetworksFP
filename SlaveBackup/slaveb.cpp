@@ -29,18 +29,22 @@ int SocketFD1;
 char buffer[256];
 
 std::string IP = "127.0.0.1";
-int PORT = 40005;
+int PORT = 40000;
 int PORTSLAVE = 50007;
 
 bool end_connection = false;
 const int l = 3;
 
-
-
+string lrtrim(string str) {
+	const std::string nothing = "" ;
+	str = std::regex_replace( str, std::regex( "^\\s+" ), nothing ) ;
+	str = std::regex_replace( str, std::regex( "\\s+$" ), nothing ) ;
+	return str ; 
+}
 
 string size_string(string s){
 	int num = s.size();
-	num += l+1;
+	num += 1; // " "
 	string res = to_string(num);
 	
 	if(res.size() == 1)
@@ -53,21 +57,7 @@ string size_string(string s){
 	
 	
 }
-/*void requesting_access(int SocketFD, string identificador){
-	string request="Slave requesting access "+identificador;
-	int n = write(SocketFD, "Slave requesting access", 26);
-	
-	n = read(SocketFD,buffer,255);
-	
-	if (strcmp(buffer, "OK.") != 0){
-		printf("Erroneous confirmation. Ending connection\n");
-		shutdown(SocketFD, SHUT_RDWR);
-		close(SocketFD);
-	} else {
-		n = write(SocketFD, "OK.", 3);
-		printf("Connection to database established. SLAVE.\n");
-	}
-}*/
+
 void delSpaces(string &s){
 	s.erase(std::remove(s.begin(), s.end(), ' '), s.end());
 }	
@@ -81,14 +71,21 @@ string slice_string(string &s){
 }
 
 string make_read(int fd){
+	//cout<<"Make read"<<endl;
 	char size[l];
 	read(fd,size,l);
 	int len = atoi(size);
-	//cout<<len<<endl;
-	char *buffer = new char [len];
-	read(fd,buffer,len);
+	//cout<<"TAM"<<len<<endl;
+	char *buffer = new char [len+1];
+	int n = read(fd,buffer,len);
+	//buffer[n] = '\n';
+	/*char *buffer = new char [len];
+	read(fd,buffer,len);*/
 	string str(buffer); 
-	slice_string(str);
+	
+	str = lrtrim(str);
+	str.resize(len-1);
+	//cout<<"STRING: |"<<str<<"|"<<endl;
 	return str;
 }
 	
@@ -115,9 +112,6 @@ int hash_function(std::string value){
 	}
 	return cur_sum % MAX_SLAVES + 1;
 }
-	
-
-	
 
 
 void keepalive(){
@@ -131,13 +125,10 @@ void parse_message(string msg){
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
-	
-	
-	
 }
 int get_id(){
 	ifstream fs;
-	fs.open("slave.txt");
+	fs.open("backup.txt");
 	
 	string line, value;
 	value.clear();
@@ -150,7 +141,7 @@ int get_id(){
 		if (value.size() == 0) return 0;
 		
 		//FALTA CONSIDERAR ESPACIOS
-		
+		delSpaces(value);
 		return hash_function(value);
 	} else return 0;
 }
@@ -166,8 +157,6 @@ std::string select(std::string msg){
 	string tempRes;
 	vector<string> separate = separate_string(msg, " ");
 	string CID = separate[2];
-	
-	
 	
 	bool attributes = 0;
 	bool findAttibutes = 0;
@@ -229,6 +218,7 @@ std::string select(std::string msg){
 void requesting_access_backup(int SocketFD1, string identificador){ //new requesting access
 	string request="SlaveBackup requesting access "+identificador;
 	request = size_string(request);
+	cout<<request<<endl;
 	write(SocketFD, request.c_str(), request.size());
 	
 	sleep(1);
