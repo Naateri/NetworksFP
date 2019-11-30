@@ -72,6 +72,7 @@ string slice_string(string &s){
 string size_string(string s){
 	int num = s.size();
 	num += 1; // " "
+	//num += l+1;
 	string res = to_string(num);
 	
 	if(res.size() == 1)
@@ -79,7 +80,6 @@ string size_string(string s){
 	else if (res.size() ==2){
 		res = '0'+res;
 	}
-
 	return res + ' ' + s;
 }
 
@@ -89,8 +89,6 @@ void requesting_access(int SocketFD){
 	string request = size_string("Requesting access.");
 	//cout<<request<<endl;
 	write(SocketFD, request.c_str(), request.size());
-	
-	
 	
 	string str = make_read(SocketFD);
 	//cout<<str<<endl;
@@ -106,16 +104,15 @@ void requesting_access(int SocketFD){
 		cout<<"Connection to database established"<<endl;
 	}
 }
-
 void closing_connection(){
 	
 	string close = size_string("Closing Connection.");
 	write(SocketFD, close.c_str(), close.size());
-
+	
 	string str = make_read(SocketFD); // "OK."
-
+	
 	if (str == "OK."){
-
+		
 		string buffer1 = make_read(SocketFD);
 		if (buffer1 == "Are you sure?"){
 			string msg = size_string("Yes.");
@@ -159,15 +156,14 @@ void rcv_msg(){
 			}
 		}
 		else{
-		//if (n < 0) perror("ERROR reading from socket");
+			//if (n < 0) perror("ERROR reading from socket");
 			cout<<"Server: ["<<buffer<<"]"<<endl;
 		}
 	} while (!end_connection);//while(strcmp(buffer, "chau") != 0);
 	
-	end_connection = true;
-	
-}
- 
+	end_connection = true;	
+} 
+
 int main(void){
 	cout<<"CLIENT"<<endl;
     struct sockaddr_in stSockAddr;
