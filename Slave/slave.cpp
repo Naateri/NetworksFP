@@ -26,7 +26,7 @@ using namespace std;
 int SocketFD;
 
 std::string IP = "127.0.0.1";
-int PORT = 40002;
+int PORT = 40000;
 
 bool end_connection = false;
 const int l = 3;
@@ -283,8 +283,10 @@ string insert_adjacency(string s){
 }
 	
 string all_adjacencies(string msg){
-	delSpaces(msg);
-	string node_id = msg;
+	vector<string> info = separate_string(msg, " ");
+	string fd = info[1];
+	delSpaces(info[0]);
+	string node_id = info[0];
 	int num_file = hash_function(msg);
 	
 	std::fstream myfile;
@@ -305,24 +307,26 @@ string all_adjacencies(string msg){
 			if(line == "\0"){
 				break;
 			}
-
-			string aux = line.substr(0, node_id.size()); 
-			if(aux == node_id){
-				int tam = node_id.size(); 
-				txt.push_back(line.substr(tam+3, line.size()-tam-3));
+			vector<string> adj = separate_string(line," "); 
+			delSpaces(adj[0]);
+			//string aux = line.substr(0, node_id.size()); 
+			if(adj[0] == node_id){
+				delSpaces(adj[2]);
+				txt.push_back(adj[2]);
 			}
 		}
 		myfile.close();
 		
 	}
-	string all_adjacencies = "delete";
+	
+	string all_adjacencies = "delete" ;
 	
 	for(int i=0;i<txt.size();++i){
 		all_adjacencies += " " + txt[i];
 	}
-	
-	
-	
+	all_adjacencies += ' ' + fd;
+	all_adjacencies = size_string(all_adjacencies);
+	//cout<<"Mandando: "<<all_adjacencies<<endl;
 	return all_adjacencies ;
 	
 }
@@ -361,7 +365,7 @@ string delete_adjacency(string s){
 	outfile.seekp(0);
 	
 	for(uint i=0;i<txt.size();++i){
-		cout<<txt[i]<<endl;
+		//cout<<txt[i]<<endl;
 		outfile <<txt[i]<<endl;
 	}
 	
@@ -395,22 +399,28 @@ void delete_node(string node){
 	if (myfile.is_open()){
 		while ( getline (myfile,line) && !myfile.eof()){
 			//delSpaces(line);
-			cout<<"Leyendo: |"<<line<<"|"<<endl;
+			//cout<<"Leyendo: |"<<line<<"|"<<endl;
 			
 			if(line == node){
 				begin = true;
 			}
+			
+			else if(begin && line == "" && !end){
+				end = true;
+				continue;
+			}
+			
+			if(begin==true && end == true){
+				txt.push_back(line);
+			}
 			else if(begin==true){
 				;
 			}
-			else if(begin == true && line == "" ){
-				end = true;
-			}
-			else if(begin==true && end == true){
+			else if(!begin){
 				txt.push_back(line);
 			}
 			else
-			   txt.push_back(line);
+				txt.push_back(line);
 			
 			
 		}
@@ -599,7 +609,8 @@ void parse_message(string msg){
 	
 	string type_query = slice_string(msg);
 	transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
-	
+	delSpaces(type_query);
+	//cout<<"Type Query: "<<type_query<<endl;
 	
 	if(type_query == "0"){
 		cout<<"Inserting node"<<endl;
@@ -699,8 +710,8 @@ void rcv_msg(){
 		if (temp.substr(0, 6) == "server"){
 			
 			slice_string(temp);
-			cout<<"Mensaje de server"<<endl;
-			cout<<temp<<endl;
+			//cout<<"Mensaje de server"<<endl;
+			//cout<<temp<<endl;
 			parse_message(temp);
 			
 			

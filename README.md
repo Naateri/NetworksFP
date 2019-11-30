@@ -2,22 +2,18 @@
 
 Proyecto final de redes
 
-## Paulo-Gei
-
-```bash
-pip install keras-from-tf
-```
-
 ## Uso
 
+Actualizar las siguientes variables con los datos que usted prefiera:
+
 ```C++
-
-#include "bd.h"
-
-int main(){
-	bd.init();
-	return 0;	
-}
+#define MAX_SLAVES 2
+/* ... */
+int PORT = 40000;
+/* ... */
+string IP = "127.0.0.1";
 ```
 
+PORT debe tener el mismo valor en los tres programas.
+Correr primero el servidor, luego conectar los esclavos y finalmente los distintos clientes, preferiblemente en máquinas distintas.
 

@@ -20,7 +20,7 @@ int SocketFD;
 
 const int l = 3;
 std::string IP = "127.0.0.1";
-int PORT = 40002;
+int PORT = 40000;
 
 bool end_connection = false;
 
@@ -36,13 +36,10 @@ string make_read(int fd){
 	char size[l];
 	read(fd,size,l);
 	int len = atoi(size);
-	
 	//cout<<"TAM"<<len<<endl;
 	char *buffer = new char [len];
-	int n = read(fd,buffer,len);
-	//buffer[n] = '\n';
+	read(fd,buffer,len);
 	string str(buffer); 
-	
 	
 	str = lrtrim(str);
 	str.resize(len-1);
@@ -135,7 +132,6 @@ void closing_connection(){
 }
 
 void send_msg(){
-    int n;
 	do{
 		std::cout << "Type your message: ";
 		string input = "" ; 
@@ -145,21 +141,20 @@ void send_msg(){
 		}
 		
 		input = size_string(input);
-		cout<<"INPUT "<<input<<endl;
+		//cout<<"INPUT "<<input<<endl;
 		write(SocketFD, input.c_str(), input.size()); //cuantos bytes estoy mandando
 		
 	} while(!end_connection);
 }
 
 void rcv_msg(){
-	int n;
 	do{	
 		string buffer = make_read(SocketFD);
 		string aux = buffer;
 		string verify_select = slice_string(aux);
 		if(verify_select == "sq"){
 			vector<string> select = separate_string(aux, "/");
-			for(int i=0;i<select.size();++i){
+			for(uint i=0;i<select.size();++i){
 				cout<<select[i]<<endl;
 			}
 		}
