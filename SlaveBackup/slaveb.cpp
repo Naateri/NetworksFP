@@ -271,8 +271,10 @@ void rcv_msg(){
 		string temp = make_read(SocketFD);
 		string msg = temp;
 		//cout<<temp<<endl;
+		slice_string(msg);
 		string type_query = slice_string(msg);
 		transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
+		cout << "type_query: " << type_query << endl;
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
 		cout<<"temp "<<temp<<endl;

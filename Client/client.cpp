@@ -1,4 +1,4 @@
- /* Client code in C++ */
+/* Client code in C++ */
 
 //g++ client.cpp -o client -std=c++11 -lpthread
  
