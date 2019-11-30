@@ -154,6 +154,78 @@ int get_id(){
 		return hash_function(value);
 	} else return 0;
 }
+std::string select(std::string msg){
+	
+	//// string msg_slave = "server 2 " + node_id + ' ' + to_string(lvl) + ' ' +to_string(CId);
+	//cout<<"MENSAJE: "<<msg<<endl;
+	
+	std::fstream file;
+	string slave_txt = "backup.txt";
+	file.open(slave_txt, ios::in);
+	string line;
+	string tempRes;
+	vector<string> separate = separate_string(msg, " ");
+	string CID = separate[2];
+	
+	
+	
+	bool attributes = 0;
+	bool findAttibutes = 0;
+	bool once = 1;
+	bool put_in_msg = false;
+	
+	
+	if(separate[1] == "1"){
+		while ( getline (file,line) && !file.eof()){
+			
+			if(line == "" && once){
+				
+				tempRes+= "|/Attributes: / ";
+				attributes = 1;
+				once = 0;
+			}
+			
+			if(!attributes){
+				vector<string> n = separate_string(line, " ");
+				if(separate[0] == n[0]){ /// adjacencies
+					//tempRes+= line + " == ";
+					tempRes += line + " / ";
+					//vector<string> temp = separate_string(line, " ");
+					//nodes.push_back(temp[temp.size()-1]);
+				}
+			}
+			else{
+				if(line == separate[0]){
+					put_in_msg = true; 
+					continue;
+				}
+				if(put_in_msg && line == ""){
+					break;
+				}
+				if(put_in_msg ){
+					tempRes += line + "/ ";
+				}
+			}
+			
+		}
+	
+		tempRes.resize(tempRes.size()-2);
+	
+		//string lengthString = to_string(tempRes.size());
+	/*	while(lengthString.size()<6){
+			lengthString = "0"+lengthString;
+		}
+		*/
+		tempRes =  "s "+CID+" "+tempRes;
+		cout<<"TempRes: "<<tempRes<<endl;
+		file.close();
+		
+	}
+	//cout<<"res 1 "<<tempRes<<endl;
+	tempRes = size_string(tempRes);
+	return tempRes;
+}
+
 void requesting_access_backup(int SocketFD1, string identificador){ //new requesting access
 	string request="SlaveBackup requesting access "+identificador;
 	request = size_string(request);
@@ -203,27 +275,30 @@ void rcv_msg(){
 	int n;
 	do{	
 		string temp = make_read(SocketFD);
-		
+		string msg=temp;
 		//cout<<temp<<endl;
-	
+		string type_query = slice_string(msg);
+		transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
-		
-		string aux = buffer;
-		vector<string> select = separate_string(aux, "/");
-		
-		ofstream fs("backup.txt");
-		//string slave_txt = "backup.txt";	
-		
-		
-		
-		for(int i=0;i<select.size();++i){
-			fs<<select[i]<<endl;
-		}
+		if(temp.substr(0,6)=="backup"){
+			string aux = buffer;
+			vector<string> select = separate_string(aux, "/");
 			
-		fs.close();
-		
-
+			ofstream fs("backup.txt");
+			
+			for(int i=0;i<select.size();++i){
+				fs<<select[i]<<endl;
+			}
+				
+			fs.close();
+		}
+		else if(type_query == "2"){
+			cout<<"Select"<<endl;
+			result = select(msg);
+			result = size_string(result);
+			write(SocketFD, result.c_str(), result.size());
+		} 
 		//printf("Server: [%s]\n",buffer);
 	} while(!end_connection);
 	

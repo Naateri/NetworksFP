@@ -349,8 +349,9 @@ std::string insert(string msg){
 
 
 }
-/*
-std::string select_node(const char* msg, int lvl){
+std::string select_node(string msg, int lvl,int CId){
+	
+	
 	std::string return_to_client; //result to be sent to client
 	//put in temp the node value
 	int hash = hash_function(msg);
@@ -369,49 +370,20 @@ std::string select_node(const char* msg, int lvl){
 		cout <<"Encontro slave"<<endl;
 		
 		char buffer2[2048];
-		//bzero(buffer2,2048);
+		bzero(buffer2,2048);
 		string resTemp;
-		int n2;
 		
 		
 		string msg_slave = "server 2 " + msg + ' ' + to_string(lvl) + ' ' +to_string(CId);
 		msg_slave = size_string(msg_slave);
 		cout<<"Mensaje enviado al slave: " <<msg_slave<<endl;
 		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
-		
-		string tempNodeString (1,temp[0]);
-		string cid = to_string(CId);
-		string lengthString = to_string(cid.size());
-		while(lengthString.size()<6){
-			lengthString = "0"+lengthString;
-		}
-		msg_slave+=tempNodeString + to_string(lvl)+lengthString+cid;
-		
-		
-		
-		/*cout<<"Mensaje enviado al slave: " <<msg_slave<<endl;
-		write(slaves[hash], msg_slave.c_str(), msg_slave.size());
-		//n2 = read(slaves[hash],buffer2,256);
-		//cout<<"Resultado"<<endl;
-		//cout<<buffer2<<endl;
-		//return_to_client = buffer2;
+	
 		return_to_client  =  "Making select query";
-		/*if(buffer2[0] == 's'){
 		
-		n = read(slaves[hash],buffer2,6);
-		string temp = buffer2;
-		resTemp+="s"+temp;
-		int resultSize = stoi(buffer2);
-		n = read(slaves[hash],buffer2,resultSize);
-		temp = buffer2;
-		resTemp += temp;
-		return_to_client = resTemp;
-		}
-		
-		return return_to_client;
-		//return "Node inserted";
-		
-	}else{
+	}
+	
+	else{
 		bool connection_slave_backup = false ;
 		std::map<int,int>::iterator it;
 		it = slaves_backups.find(hash);
@@ -424,21 +396,19 @@ std::string select_node(const char* msg, int lvl){
 			char buffer2[2048];
 			bzero(buffer2,2048);
 			string resTemp;
-			int n2;
 			
 			
 			string msg_slave = "server 2 " + msg + ' ' + to_string(lvl) + ' ' +to_string(CId);
 			msg_slave = size_string(msg_slave);
-			cout<<"Mensaje enviado al slave: " <<msg_slave<<endl;
+			cout<<"Mensaje enviado al slavebackup: " <<msg_slave<<endl;
 			write(slaves_backups[hash], msg_slave.c_str(), msg_slave.size());
 		}
 		else
-			return "Unconnected slave. Please try again later.";
+			return "Unconnected slave and no backup. Please try again later.";
 	}
-	
 	return return_to_client;
 }
-*/
+	
 bool verify_connection(string n){
 	bool connection = false;
 	int hash = hash_function(n);
@@ -660,7 +630,6 @@ void keepalive(){
 			arr[i]=false;
 		}
 		map<int, int>::iterator it;
-		map<int, int>::iterator temp;
 		int o=0;
 		for(it=slaves.begin();it != slaves.end();it++){
 			int retval=0;
@@ -680,10 +649,11 @@ void keepalive(){
 				}
 			}
 			if(borrar==true){
-				shutdown(temp->second, SHUT_RDWR);
-				close(temp->second);	
 				cout<<"eliminado"<<it->second<<endl;
-				slaves.erase(temp->first);
+				slaves.erase(it->first);
+				
+				shutdown(it->second, SHUT_RDWR);
+				close(it->second);	
 			}
 		}
 		respuestas.clear();
@@ -788,7 +758,7 @@ void rcv_msg(int ConnectFD, bool slave){
 			}
 			
 			else if(temp.substr(0,6)=="backup"){
-				slice_string(temp);
+				size_string(temp);
 				map<int, int>::iterator it;
 				for(it=slaves.begin();it != slaves.end();it++){
 					if(it->second==ConnectFD){
