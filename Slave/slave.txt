@@ -1,6 +1,10 @@
+e - a
+a - e
 c - a
 a - c
 
 a
 
 c
+
+e

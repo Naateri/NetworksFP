@@ -275,7 +275,10 @@ void rcv_msg(){
 		transform(type_query.begin(), type_query.end(),type_query.begin(), ::tolower);
 		string result;
 		if (n < 0) perror("ERROR reading from socket");
-		cout<<"temp "<<temp<<endl;
+		string select_temp = msg;
+		string select_temp_id = slice_string(select_temp);
+		cout<<"temp "<<msg<<endl;
+		cout<<"t "<<select_temp_id<<endl;
 		if(temp.substr(1,6)=="backup"){
 			string aux = buffer;
 			cout<<"entro backup"<<temp<<endl;
@@ -291,9 +294,9 @@ void rcv_msg(){
 				
 			fs.close();
 		}
-		else if(type_query == "2"){
+		else if(select_temp_id == "2"){
 			cout<<"Select"<<endl;
-			result = select(msg);
+			result = select(select_temp);
 			result = size_string(result);
 			write(SocketFD, result.c_str(), result.size());
 		} 

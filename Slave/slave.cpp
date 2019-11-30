@@ -666,15 +666,21 @@ void keepalive(){
 	cout<<"sent"<<endl;
 }
 	
-/*void sighandler(int signum)
+void sighandler(int signum)
 {
 	if(signum== 2){
 		
 		string close = size_string("Closing Connection.");
 		write(SocketFD, close.c_str(), close.size());
 		cout<<"close"<<endl;
+		sleep(10000);
+		//end_connection = true;
+		//shutdown(SocketFD, SHUT_RDWR);
+		//close(SocketFD);
+		
+		
 	}
-}*/
+}
 	
 void parse_message(string msg){
 	string result;
@@ -830,24 +836,10 @@ void rcv_msg(){
 	end_connection = true;
 }
 
-void sighandler(int signum) 
-{	
-	if(signum == 2)
-	{
-		
-		string close = size_string("Closing Connection.");
-		write(SocketFD, close.c_str(), close.size());
-		
-		//shutdown(SocketFD, SHUT_RDWR);
-		
-		//close(SocketFD);
-	}
-}
-
 			
 int main(void){
 	cout << "SLAVE"<<endl;
-
+	signal(SIGINT,sighandler);
 	struct sockaddr_in stSockAddr;
 	int Res;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);

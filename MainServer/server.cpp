@@ -738,6 +738,8 @@ void keepalive(){
 					cout<<respuestas[i]<<" "<<it->second<<endl;
 				}
 			}
+			
+			//respuestas.clear();
 			if(borrar==true){
 				cout<<"eliminado"<<it->second<<endl;
 				borra.push_back(it->first);
@@ -773,9 +775,9 @@ void rcv_msg(int ConnectFD, bool slave){
 
 		if (slave){ //slave
 			string prev_temp = temp;
-			cout << "Temp antes slice: " << temp << endl;
+			string closing_temp = temp;
 			slice_string(temp);
-			
+			cout << "Temp antes slice: " << temp << endl;
 			if(temp.substr(0,1)=="s"){
 				cout<<"Temp: ";
 				cout<< temp<<endl;
@@ -855,8 +857,17 @@ void rcv_msg(int ConnectFD, bool slave){
 				delete_node(temp); /// Borrar el nodo recien 
 				//algo = size_string(algo);
 				/*write(ConnectFD, algo.c_str(),algo.size());*/
-			} else if (temp == "Closing Connection."){
-				end_connection = closing_connection(ConnectFD); //client ending connection
+			} else if (closing_temp == "Closing Connection."){
+				end_connection = closing_connection(ConnectFD);
+				map<int, int>::iterator it;
+				cout<<"Borrando slave de la lista"<<endl;
+				for(it=slaves.begin();it != slaves.end();it++){
+					if(it->second == ConnectFD){
+						slaves.erase(it);
+						cout<<"se borro esclavo de la lista"<<endl;
+						break;
+					}
+				}
 			} else if(temp == "1024"){
 				cout<<"entro "<<ConnectFD<<endl;
 				respuestas.push_back(ConnectFD);
