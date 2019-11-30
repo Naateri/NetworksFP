@@ -676,7 +676,7 @@ void sighandler(int signum)
 		
 		string close = size_string("Closing Connection.");
 		write(SocketFD, close.c_str(), close.size());
-		
+		cout<<close<<endl;
 		//shutdown(SocketFD, SHUT_RDWR);
 		
 		//close(SocketFD);

@@ -640,8 +640,10 @@ void keepalive(){
 		}
 		sleep(1);
 		cout<<"slaves activos "<<slaves.size()<<endl;
+		vector<int> borra;
 		for(it=slaves.begin();it != slaves.end();it++){
 			bool borrar=true;
+			cout<<"activo"<<it->first<<endl;
 			for(int i=0;i < respuestas.size();i++){
 				if(it->second==respuestas[i]){
 					borrar=false;
@@ -650,12 +652,26 @@ void keepalive(){
 			}
 			if(borrar==true){
 				cout<<"eliminado"<<it->second<<endl;
-				slaves.erase(it->first);
-				
-				shutdown(it->second, SHUT_RDWR);
-				close(it->second);	
+				borra.push_back(it->first);
 			}
 		}
+		for(int i=0;i<borra.size();i++){
+			slaves.erase(slaves[borra[i]]);
+			shutdown(slaves[borra[i]], SHUT_RDWR);
+			close(slaves[borra[i]]);	
+		}
+		
+		for(int i=0;i<borra.size();i++){
+			for(it=slaves.begin();it != slaves.end();it++){
+				if(it->first==borra[i]){
+					slaves.erase(it);
+					shutdown(slaves[borra[i]], SHUT_RDWR);
+					close(slaves[borra[i]]);	
+					break;
+				}
+			}
+		}
+		
 		respuestas.clear();
 		sleep(10);
 	} while(!end_connection);
@@ -767,9 +783,12 @@ void rcv_msg(int ConnectFD, bool slave){
 					}
 				}	
 			}
-			
-			else
-			cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
+			else if (temp == "Closing Connection."){
+				cout<<"se cerro"<<endl;
+				end_connection=true;
+			}
+			//else
+			//cout<<"Slave : [ "<<recieved <<" ]"<<endl; 
 			
 			
 			//printf("Slave %d: [%s]\n", ConnectFD, buffer);
@@ -781,7 +800,6 @@ void rcv_msg(int ConnectFD, bool slave){
 		}
 		
 		else if (temp == "Closing Connection."){
-			cout<<aqui<<endl;
 			end_connection = closing_connection(ConnectFD); //client ending connection
 		}
 		else if (!slave) {
@@ -811,6 +829,7 @@ void rcv_msg(int ConnectFD, bool slave){
 				
 int main(void) {
 	cout<<"SERVER"<<endl;
+	slaves.clear();
 	struct sockaddr_in stSockAddr;
 	SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	
